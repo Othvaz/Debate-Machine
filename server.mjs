@@ -11,7 +11,7 @@ app.use(express.static("public"));
 app.get("/health", (_req,res) => res.json({ok:true}));
 
 const OPENROUTER_BASE = process.env.OPENROUTER_BASE || "https://openrouter.ai/api/v1";
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+// const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
 async function chat(model, systemText, userText, temperature = 0.2, jsonMode = false, maxTokens = undefined){
     const messages = [];
@@ -76,10 +76,10 @@ async function summarizeText(text){
 
 }
 
-async function modelOpenings(summary, MODEL_A, MODEL_B){
+async function modelOpenings(summary, MODEL_A, MODEL_B, perspective){
     
-    const sysA = "You argue FOR the central claim. Your opposition will argue AGAINST the central claim. You will use ONLY the SUMMARY facts. 220-280 words. No insults.";
-    const sysB = "You argue AGAINST the central claim. Your opposition will argue FOR the central claim. You will use ONLY the SUMMARY facts. 220-280 words. No insults.";
+    const sysA = `You argue FOR the central claim. Your opposition will argue AGAINST the central claim. You will use ONLY the SUMMARY facts. Respond through lens of ${perspective}. 220-280 words. No insults.`;
+    const sysB = `You argue AGAINST the central claim. Your opposition will argue FOR the central claim. You will use ONLY the SUMMARY facts. Respond through lens of ${perspective}. 220-280 words. No insults.`;
 
     const rawA = await chat(MODEL_A,sysA,`SUMMARY:\n${summary}\n\nWrite your opening.`,0.4);
     const rawB = await chat(MODEL_B,sysB,`SUMMARY:\n${summary}\n\nWrite your opening.`,0.4);
@@ -87,10 +87,10 @@ async function modelOpenings(summary, MODEL_A, MODEL_B){
     return { aOpeningClipped: cliptoLastSentence(rawA), bOpeningClipped: cliptoLastSentence(rawB)};
 }
 
-async function modelRebuttals(summary,oppositionA, oppositionB, MODEL_A, MODEL_B){
+async function modelRebuttals(summary,oppositionA, oppositionB, MODEL_A, MODEL_B, perspective){
     
-    const sysA = "You argue FOR the central claim. Respond directly to the opponent's opening using only the SUMMARY and facts. 160-220 words. No insults. All in one line.";
-    const sysB = "You argue AGAINST the central claim. Respond directly to the opponent's opening using only the SUMMARY and facts. 160-220 words. No insults. All in one line.";
+    const sysA = `You argue FOR the central claim. Respond directly to the opponent's opening using only the SUMMARY and facts. Respond through lens of ${perspective}. 160-220 words. No insults. All in one line.`;
+    const sysB = `You argue AGAINST the central claim. Respond directly to the opponent's opening using only the SUMMARY and facts. Respond through lens of ${perspective}. 160-220 words. No insults. All in one line.`;
 
     const rawA = await chat(MODEL_A,sysA,`SUMMARY:\n${summary}\n\nOPPOSITION'S OPENING (AGAINST):\n${oppositionB}\n\nWrite your rebuttal.`);
     const rawB = await chat(MODEL_B,sysB,`SUMMARY:\n${summary}\n\nOPPOSITION'S OPENING (FOR):\n${oppositionA}\n\nWrite your rebuttal.`);
@@ -98,10 +98,10 @@ async function modelRebuttals(summary,oppositionA, oppositionB, MODEL_A, MODEL_B
     return { aRebuttalClipped: cliptoLastSentence(rawA), bRebuttalClipped: cliptoLastSentence(rawB)};
 }
 
-async function modelFollowup(summary,oppositionOpeningA,oppositionRebuttalA,oppositionOpeningB,oppositionRebuttalB, MODEL_A, MODEL_B){
+async function modelFollowup(summary,oppositionOpeningA,oppositionRebuttalA,oppositionOpeningB,oppositionRebuttalB, MODEL_A, MODEL_B, perspective){
     
-    const sysA = "You argue FOR the central claim. Respond directly to the opponent's opening and their rebuttal using only the SUMMARY and facts. 160-220 words. No insults. All in one line.";
-    const sysB = "You argue AGAINST the central claim. Respond directly to the opponent's opening and their rebuttal using only the SUMMARY and facts. 160-220 words. No insults. All in one line.";
+    const sysA = `You argue FOR the central claim. Respond directly to the opponent's opening and their rebuttal using only the SUMMARY and facts. Respond through lens of ${perspective}. 160-220 words. No insults. All in one line.`;
+    const sysB = `You argue AGAINST the central claim. Respond directly to the opponent's opening and their rebuttal using only the SUMMARY and facts. Respond through lens of ${perspective}. 160-220 words. No insults. All in one line.`;
 
     const rawA = await chat(MODEL_A,sysA,`SUMMARY:\n${summary}\n\nYOUR OPENING STATEMENT (FOR):\n${oppositionOpeningA}\n\nOPPOSITION'S OPENING (AGAINST):\n${oppositionOpeningB}\n\nOPPOSITION'S REBUTTAL TO YOUR OPENING:\n${oppositionRebuttalB}\n\nWrite your followup regarding all this.`);
     const rawB = await chat(MODEL_B,sysB,`SUMMARY:\n${summary}\n\nYOUR OPENING STATEMENT (AGAINST):\n${oppositionOpeningB}\n\nOPPOSITION'S OPENING (FOR):\n${oppositionOpeningA}\n\nOPPOSITION'S REBUTTAL TO YOUR OPENING:\n${oppositionRebuttalA}\n\nWrite your followup regarding all this.`);
@@ -125,10 +125,13 @@ app.post("/api/run", async (req,res) => {
         const modelB = req.body?.modelB || process.env.MODEL_B || "google/gemini-2.5-pro";
         console.log("Using models:", modelA, modelB);
 
+        const perspectiveSelected = req.body?.perspectives || "Morality";
+        
+
         const summary = await summarizeText(userText);
-        const {aOpeningClipped, bOpeningClipped} = await modelOpenings(summary, modelA, modelB);
-        const {aRebuttalClipped, bRebuttalClipped} = await modelRebuttals(summary,aOpeningClipped, bOpeningClipped, modelA, modelB);
-        const {aFollowupClipped, bFollowupClipped} = await modelFollowup(summary,aOpeningClipped,aRebuttalClipped,bOpeningClipped,bRebuttalClipped, modelA, modelB);
+        const {aOpeningClipped, bOpeningClipped} = await modelOpenings(summary, modelA, modelB, perspectiveSelected);
+        const {aRebuttalClipped, bRebuttalClipped} = await modelRebuttals(summary,aOpeningClipped, bOpeningClipped, modelA, modelB, perspectiveSelected);
+        const {aFollowupClipped, bFollowupClipped} = await modelFollowup(summary,aOpeningClipped,aRebuttalClipped,bOpeningClipped,bRebuttalClipped, modelA, modelB, perspectiveSelected);
 
         res.json({userText, summary, aOpeningClipped,bOpeningClipped,aRebuttalClipped,bRebuttalClipped,aFollowupClipped,bFollowupClipped});
     }

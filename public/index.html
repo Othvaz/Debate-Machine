@@ -8,12 +8,15 @@
 </head>
 <body class="w-[100vw] flex pt-[10vh] gap-[10vw]">
     <div class="flex flex-col h-screen">
-
         <!-- Model Select and Perspectives -->
         <div class="flex w-[30vw] justify-start gap-5 mb-3 ml-[10vw]">
             <!-- <button id="modelBtn" class="bg-white border border-gray-300 pt-[1vh] pb-[1vh] pl-[1vw] pr-[1vw] hover:bg-gray-200 rounded-xl">Model Select</button> -->
             
-            <button class="bg-white border border-gray-300 pt-[1vh] pb-[1vh] pl-[1vw] pr-[1vw] hover:bg-gray-200 rounded-xl">Perspective</button>
+            <!-- <button class="bg-white border border-gray-300 pt-[1vh] pb-[1vh] pl-[1vw] pr-[1vw] hover:bg-gray-200 rounded-xl">Perspective</button> -->
+            <label class="inline-flex items-center gap-2">
+                <input type="checkbox" id="perspectiveToggle">
+                <span>Perspectives</span>
+            </label>
             <label class="inline-flex items-center gap-2">
                 <input type="checkbox" id="modelToggle" class="h-4 w-4">
                 <span>Model Select</span>
@@ -25,18 +28,42 @@
             <label for="inputArea" class="absolute top-2 left-2 bg-white px-1 text-xs font-bold text-gray-600 z-10 pointer-events-none"><b>Input Text</b></label>
             <textarea name="inputArea" id="inputArea" class="autosize border pt-6 p-2.5 w-[30vw] h-[15vh]" placeholder="Input your text here!"></textarea>
         </div>
-
         <!-- Hidden Model Select -->
-        <div id="modelRow" class="text-left ml-[10vw] hidden">
-            <div class="flex-1">
+        <div id="modelRow" class="text-left ml-[10vw] mt-4 hidden">
+            <div class="flex-col">
                 <label class="block mb-1 font-medium text-sm">Model A [FOR]</label>
                 <select id="modelA" class="border p-2 w-full"></select>
             </div>
-            <div class="flex-1">
+            <div class="flex-col">
                 <label class="block mt-3 mb-1 font-medium text-sm">Model B [AGAINST]</label>
                 <select id="modelB" class="border p-2 w-full"></select>
             </div>
-          </div>
+        </div>
+
+        <!-- Hidden Perspectives Select -->
+        <div id="perspectiveRow" class="ml-[10vw] mt-5 hidden flex items-start gap-6">
+            <div class="flex-col">
+                <label class="block mb-1 font-medium text-sm">Perspectives</label>
+                <select id="perspectives" multiple class="border p-2 rounded w-[15vw] shrink-0">
+                    <option value="legality">Legality</option>
+                    <option value="ethics">Ethics</option>
+                    <option value="morality">Morality</option>
+                    <option value="economics">Economics</option>
+                    <option value="public_health">Public health</option>
+                    <option value="environment">Environmental impact</option>
+                    <option value="security">Security/Risk</option>
+                    <option value="human_rights">Human rights</option>
+                    <option value="tech">Technical feasibility</option>
+                    <option value="religion">Religion/Cultural values</option>
+                </select>
+            </div>
+
+            <div id="perspectivePreview" class="text-sm text-gray-600 mt-1 flex-1 min-w-0 whitespace-normal break-words max-w-[10vw]">
+                Selected perspectives are: -
+            </div>
+        </div>
+
+          <!-- Start Debate -->
         <div class="flex justify-end w-[30vw] ml-[10vw] mt-2">
             <button class="bg-green-400 text-white border mt-2 border-green-300 pt-[1vh] pb-[1vh] pl-[1vw] pr-[1vw] hover:bg-gray-200 rounded-xl" id="runBtn">Initiate Debate</button>
         </div>
@@ -59,24 +86,24 @@
             <div class="relative col-start-2 w-full mt-3">
                 <label for="summaryArea" class="absolute top-2 left-2 bg-white px-1 text-xs font-bold text-gray-600 z-10 pointer-events-none"><b>SUMMARY</b></label>
                 <textarea id="summary" name="summaryArea" class="autosize border p-2.5 pt-6 w-full" style="height: 10vw;" placeholder="-" readonly></textarea>
-                <button type="button"
+                <!-- <button type="button"
                 class="copy-btn absolute bottom-2 right-2 bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 mb-1 rounded-md shadow"
-                data-target="#summary">Copy</button>
+                data-target="#summary">Copy</button> -->
             </div>
             <div class="col-start-2 flex gap-2 mt-3">
                 <div class="relative flex-1">
                     <label for="openingFor" class="absolute top-2 left-2 bg-white px-1 text-xs font-bold text-gray-600 z-10 pointer-events-none"><b>OPENING [FOR]</b></label>
                     <textarea id="openingFor" name="openingFor" class="autosize border p-2.5 pt-6 w-full h-[8vw] resize-none" placeholder="-" readonly></textarea>
-                    <button type="button"
+                    <!-- <button type="button"
                     class="copy-btn absolute bottom-2 right-2 bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 mb-1 rounded-md shadow"
-                    data-target="#openingFor">Copy</button>
+                    data-target="#openingFor">Copy</button> -->
                 </div>
                 <div class="relative flex-1">
                     <label for="openingAgainst" class="absolute top-2 left-2 bg-white px-1 text-xs font-bold text-gray-600 z-10 pointer-events-none"><b>OPENING [AGAINST]</b></label>
                     <textarea id="openingAgainst" name="openingAgainst" class="autosize border p-2.5 pt-6 w-full h-[8vw] resize-none" placeholder="-" readonly></textarea>
-                    <button type="button"
+                    <!-- <button type="button"
                     class="copy-btn absolute bottom-2 right-2 bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 mb-1 rounded-md shadow"
-                    data-target="#openingAgainst">Copy</button>
+                    data-target="#openingAgainst">Copy</button> -->
                 </div>
             </div>
             <div class="col-start-2 flex gap-2 mt-3">
@@ -107,10 +134,12 @@
 
         const runBtn = document.getElementById('runBtn');
         const modelToggle = document.getElementById('modelToggle');
+        const perspectiveToggle = document.getElementById('perspectiveToggle');
         const input = document.getElementById('inputArea');
 
         const inputRow = document.getElementById('inputRow');
         const modelRow = document.getElementById('modelRow');
+        const perspectiveRow = document.getElementById('perspectiveRow');
         const selA = document.getElementById('modelA')
         const selB = document.getElementById('modelB')
 
@@ -155,6 +184,20 @@
             });
         }
 
+        function updatePerspectiveView(){
+            const perspectivePreview = document.getElementById('perspectivePreview');
+            const sel = document.getElementById('perspectives');
+            if (!perspectivePreview || !sel) return;
+            const optionsArray = Array.from(sel.selectedOptions || []);
+            if (optionsArray.length === 0){
+                perspectivePreview.textContent = 'Selected perspectives are: -';
+            }
+            else{
+                const labels = optionsArray.map(opt => opt.text.trim());
+                perspectivePreview.textContent = 'Selected perspectives are: ' + labels.join(', ');
+            }
+        }
+
         // What happens when the page first loads
         document.addEventListener('DOMContentLoaded', () => {
             autosizeAll();
@@ -163,12 +206,21 @@
 
             selA.value = "google/gemini-2.5-pro";
             selB.value = "google/gemini-2.5-pro";
+            const pers = document.getElementById('perspectives');
+            if (pers){
+                pers.addEventListener('change', updatePerspectiveView);
+            }
+            updatePerspectiveView();
         });
 
         modelToggle.addEventListener('change', (e) => {
             modelRow.classList.toggle('hidden', !e.target.checked);
         });
 
+        perspectiveToggle.addEventListener('change', (e) => {
+            perspectiveRow.classList.toggle('hidden', !e.target.checked);
+            if (!perspectiveRow.classList.contains('hidden')) updatePerspectivePreview();
+        });
 
         runBtn.addEventListener('click', async() => {
             const text = input.value.trim();
@@ -176,10 +228,22 @@
                 alert("Enter some text first.");
                 return;
             }
+
+            const perspectiveSel = document.getElementById('perspectives');
+
+            let perspectives = "Morality";
+            
+            if (perspectiveSel){
+                const optionsArray = Array.from(perspectiveSel.selectedOptions);
+                const labels = optionsArray.map(opt => opt.text.trim());
+                perspectives = labels.join(', ');
+            }
+            
+            
             runBtn.disabled = true;
             const previousLabel = runBtn.textContent;
             runBtn.textContent = "Running...";
-    
+
             try {
                 const response = await fetch('http://localhost:3000/api/run', {
                     method: 'POST',
@@ -187,7 +251,8 @@
                     body: JSON.stringify({
                         text,
                         modelA: selA.value,
-                        modelB: selB.value
+                        modelB: selB.value,
+                        perspectives
                     })
                 });
                 const data = await response.json();
