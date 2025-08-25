@@ -5,153 +5,130 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>News Debate Web</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+          @layer utilities{
+            @keyframes gradient {
+            0%,100% { background-position: 0% 50% }
+            50%     { background-position: 100% 50% }
+            }
+            .animate-gradient{
+            animation: gradient 16s ease infinite;
+            background-size: 200% 200%;
+            }
+        }
+        #inputArea {
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE and Edge */
+        }
+        
+        #inputArea::-webkit-scrollbar {
+            display: none; /* Chrome, Safari and Opera */
+        }
+    </style>
 </head>
-<body class="w-[100vw] flex pt-[10vh] gap-[10vw]">
-    <div class="flex flex-col h-screen">
-        <!-- Model Select and Perspectives -->
-        <div class="flex w-[30vw] justify-start gap-5 mb-3 ml-[10vw]">
-            <!-- <button id="modelBtn" class="bg-white border border-gray-300 pt-[1vh] pb-[1vh] pl-[1vw] pr-[1vw] hover:bg-gray-200 rounded-xl">Model Select</button> -->
-            
-            <!-- <button class="bg-white border border-gray-300 pt-[1vh] pb-[1vh] pl-[1vw] pr-[1vw] hover:bg-gray-200 rounded-xl">Perspective</button> -->
-            <label class="inline-flex items-center gap-2">
-                <input type="checkbox" id="perspectiveToggle">
-                <span>Perspectives</span>
+<body class="min-h-screen w-screen flex
+             bg-gradient-to-r from-sky-300 via-indigo-300 to-fuchsia-300
+             animate-gradient text-slate-900">
+    <div class="w-full h-full text-center mt-[10vh] mb-[10vh] items-center flex flex-col">
+        <!-- Title + Dropdowns row (directly above textarea) -->
+        <div class="w-[50vw] flex items-center gap-4">
+          <h1 class="flex-1 text-start font-mono text-[20px]">
+            <b>Extra Super<br>Debator Program</b>
+          </h1>
+          <div class="self-end">
+            <!-- Simple on/off switch -->
+            <label class="inline-flex items-center cursor-pointer">
+              <input type="checkbox" class="sr-only peer" id="toggleSwitch">
+              <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+              <span class="ms-3 text-sm font-medium mr-3 text-gray-900">Link</span>
             </label>
-            <label class="inline-flex items-center gap-2">
-                <input type="checkbox" id="modelToggle" class="h-4 w-4">
-                <span>Model Select</span>
-            </label>
+          </div>
         </div>
-
-        <!-- Input Textarea -->
-        <div id="inputRow" class="text-left ml-[10vw] relative">
-            <label for="inputArea" class="absolute top-2 left-2 bg-white px-1 text-xs font-bold text-gray-600 z-10 pointer-events-none"><b>Input Text</b></label>
-            <textarea name="inputArea" id="inputArea" class="autosize border pt-6 p-2.5 w-[30vw] h-[15vh]" placeholder="Input your text here!"></textarea>
-        </div>
-        <!-- Hidden Model Select -->
-        <div id="modelRow" class="text-left ml-[10vw] mt-4 hidden">
-            <div class="flex-col">
-                <label class="block mb-1 font-medium text-sm">Model A [FOR]</label>
-                <select id="modelA" class="border p-2 w-full"></select>
-            </div>
-            <div class="flex-col">
-                <label class="block mt-3 mb-1 font-medium text-sm">Model B [AGAINST]</label>
-                <select id="modelB" class="border p-2 w-full"></select>
-            </div>
-        </div>
-
-        <!-- Hidden Perspectives Select -->
-        <div id="perspectiveRow" class="ml-[10vw] mt-5 hidden flex items-start gap-6">
-            <div class="flex-col">
-                <label class="block mb-1 font-medium text-sm">Perspectives</label>
-                <select id="perspectives" multiple class="border p-2 rounded w-[15vw] shrink-0">
-                    <option value="legality">Legality</option>
-                    <option value="ethics">Ethics</option>
-                    <option value="morality">Morality</option>
-                    <option value="economics">Economics</option>
-                    <option value="public_health">Public health</option>
-                    <option value="environment">Environmental impact</option>
-                    <option value="security">Security/Risk</option>
-                    <option value="human_rights">Human rights</option>
-                    <option value="tech">Technical feasibility</option>
-                    <option value="religion">Religion/Cultural values</option>
-                </select>
+        <div class="w-[50vw] mx-auto">
+            <div class="relative">
+                <div class="absolute w-[48vw] h-[4vh] items-center text-center z-20 pointer-events-none bg-white px-2 text-hi left-1/2 transform top-[1px] -translate-x-1/2 text-transparent">aaa</div>
+                <label for="summarizeArea" class="absolute pl-[1.3vw] top-[1.5vh] pointer-events-none text-gray-500 z-30">Input Summarizer</label>
+                <textarea name="summarizeArea" id="summarizeArea" class="autosize w-[50vw] lg:pr-[12rem] sm:pr-[10rem] pr-[10rem] h-[20vh] pl-[1.3vw] pb-[10vh] pt-10 box-border z-10 border rounded-[20px] focus:outline-none" placeholder="Aw, shucks."></textarea>
+                <button id="summarizeBtn" class="absolute right-[2vw] bottom-[2vh] px-4 py-2 min-w-[6rem] border rounded-[20px] border-green-300 bg-green-400 hover:bg-green-500 text-white text-[13px]]">
+                    <span class="hidden sm:inline">Summarize Input</span>
+                    <span class="sm:hidden">▶</span>
+                </button>
             </div>
 
-            <div id="perspectivePreview" class="text-sm text-gray-600 mt-1 flex-1 min-w-0 whitespace-normal break-words max-w-[10vw]">
-                Selected perspectives are: -
+            <!-- Model Row -->
+            <div id="modelRow" class="flex justify-evenly gap-4 mb-4 mt-10">
+                <div class="flex-col">
+                    <label class="block mb-1 font-medium text-sm">Perspectives</label>
+                    <select size="1" id="perspectives" multiple class="border p-2 rounded w-[15vw] shrink-0">Select your Perspectives
+                        <option value="placeholder" disabled>--Select Perspectives--</option>
+                    </select>
+                </div>
+
+                <div class="flex flex-col">
+                    <label for="modelA" class="block mb-1 font-medium text-sm">Model A [FOR]</label>
+                    <select id="modelA" class="border p-2"></select>
+                </div>
+                <div class="flex flex-col">
+                    <label for="modelB" class="block mb-1 font-medium text-sm">Model B [AGAINST]</label>
+                    <select id="modelB" class="border p-2"></select>
+                </div>
+            </div>
+            <!-- Summary -->
+            <div class="relative">
+                <div class="absolute w-[48vw] h-[4vh] items-center text-center z-20 pointer-events-none bg-white px-2 text-hi left-1/2 transform top-[1px] -translate-x-1/2 text-transparent">aaa</div>
+                <label for="inputArea" class="absolute pl-[1.3vw] top-[1.5vh] pointer-events-none text-gray-500 z-30">Lovely</label> 
+                <textarea name="inputArea" id="inputArea" class="autosize w-[50vw] lg:pr-[12rem] sm:pr-[10rem] pr-[10rem] h-[20vh] pl-[1.3vw] pb-[10vh] pt-10 box-border z-10 border rounded-[20px] focus:outline-none" placeholder="Aw, shucks."></textarea>
+                <button id="runBtn" class="absolute right-[2vw] bottom-[2vh] px-4 py-2 min-w-[6rem] border rounded-[20px] border-green-300 bg-green-400 hover:bg-green-500 text-white text-[13px]]">
+                    <span class="hidden sm:inline">Initiate Debate</span>
+                    <span class="sm:hidden">▶</span>
+                </button>
             </div>
         </div>
 
-          <!-- Start Debate -->
-        <div class="flex justify-end w-[30vw] ml-[10vw] mt-2">
-            <button class="bg-green-400 text-white border mt-2 border-green-300 pt-[1vh] pb-[1vh] pl-[1vw] pr-[1vw] hover:bg-gray-200 rounded-xl" id="runBtn">Initiate Debate</button>
-        </div>
+
+        
+        <div class="flex gap-[2vw] mt-4 flex-col md:flex-row items-stretch">
+            <button type="button" aria-label="Previous" id="prevBtn" class="text-4xl md:text-[60px] hover:bg-gray-100 transition-colors duration-200 rounded-[5px] px-2">&lt;</button>
+            <div class="relative w-[90vw] md:w-[30vw] flex-shrink-0">
+              <label for="openingFor" id="labelFor" class="absolute pl-[1.3vw] top-[1.5vh] bg-white px-2 text-gray-500 z-20 pointer-events-none text-sm">Opening — For</label>
+              <textarea id="openingFor" name="openingFor" class="autosize pl-[1.3vw] pb-[10vh] pt-10 focus:outline-none border w-full min-h-[20vh] p-3 rounded-[20px] resize-none box-border z-10" placeholder="[Generated during debate.]" readonly aria-label="Opening for"></textarea>
+            </div>
+            <div class="relative w-[90vw] md:w-[30vw] flex-shrink-0">
+              <label for="openingAgainst" id="labelAgainst" class="absolute pl-[1.3vw] top-[1.5vh] bg-white px-2 text-gray-500 z-20 pointer-events-none text-sm">Opening — Against</label>
+              <textarea id="openingAgainst" name="openingAgainst" class="autosize pl-[1.3vw] pb-[10vh] pt-10 focus:outline-none border w-full min-h-[20vh] p-3 rounded-[20px] resize-none box-border z-10" placeholder="[Generated during debate.]" readonly aria-label="Opening against"></textarea>
+            </div>
+            <button type="button" aria-label="Next" id="nextBtn" class="text-4xl md:text-[60px] hover:bg-gray-100 transition-colors duration-200 rounded-[5px] px-2">&gt;</button>
+          </div>
+          
     </div>
-    <div class="mt-[5vh] flex-1 h-full">
-        <div class="mx-auto mr-[10vw]">
-            <!-- <h1 class="font-bold">Summary</h1>
-            <div id="summary" class="whitespace-pre-wrap">Summary put here</div>
-            
-            <h1 class="mt-2 font-bold">Opening</h1>
-            <div id="opening" class="whitespace-pre-wrap">Opening put here</div>
-
-            <h1 class="mt-2 font-bold">Rebuttal</h1>
-            <div id="rebuttal" class="whitespace-pre-wrap">Rebuttal put here</div>
-
-            <h1 class="mt-2 font-bold">Follow-up</h1>
-            <div id="followup" class="whitespace-pre-wrap">Follow-up put here</div> -->
-
-            <!-- BREAKING POINT -->
-            <div class="relative col-start-2 w-full mt-3">
-                <label for="summaryArea" class="absolute top-2 left-2 bg-white px-1 text-xs font-bold text-gray-600 z-10 pointer-events-none"><b>SUMMARY</b></label>
-                <textarea id="summary" name="summaryArea" class="autosize border p-2.5 pt-6 w-full" style="height: 10vw;" placeholder="-" readonly></textarea>
-                <!-- <button type="button"
-                class="copy-btn absolute bottom-2 right-2 bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 mb-1 rounded-md shadow"
-                data-target="#summary">Copy</button> -->
-            </div>
-            <div class="col-start-2 flex gap-2 mt-3">
-                <div class="relative flex-1">
-                    <label for="openingFor" class="absolute top-2 left-2 bg-white px-1 text-xs font-bold text-gray-600 z-10 pointer-events-none"><b>OPENING [FOR]</b></label>
-                    <textarea id="openingFor" name="openingFor" class="autosize border p-2.5 pt-6 w-full h-[8vw] resize-none" placeholder="-" readonly></textarea>
-                    <!-- <button type="button"
-                    class="copy-btn absolute bottom-2 right-2 bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 mb-1 rounded-md shadow"
-                    data-target="#openingFor">Copy</button> -->
-                </div>
-                <div class="relative flex-1">
-                    <label for="openingAgainst" class="absolute top-2 left-2 bg-white px-1 text-xs font-bold text-gray-600 z-10 pointer-events-none"><b>OPENING [AGAINST]</b></label>
-                    <textarea id="openingAgainst" name="openingAgainst" class="autosize border p-2.5 pt-6 w-full h-[8vw] resize-none" placeholder="-" readonly></textarea>
-                    <!-- <button type="button"
-                    class="copy-btn absolute bottom-2 right-2 bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 mb-1 rounded-md shadow"
-                    data-target="#openingAgainst">Copy</button> -->
-                </div>
-            </div>
-            <div class="col-start-2 flex gap-2 mt-3">
-                <div class="relative flex-1">
-                    <label for="rebuttalFor" class="absolute top-2 left-2 bg-white px-1 text-xs font-bold text-gray-600 z-10 pointer-events-none"><b>REBUTTAL [FOR]</b></label>
-                    <textarea id="rebuttalFor" name="rebuttalFor" class="autosize border p-2.5 pt-6 w-full h-[8vw] resize-none" placeholder="-" readonly></textarea>
-                </div>
-                <div class="relative flex-1">
-                    <label for="rebuttalAgainst" class="absolute top-2 left-2 bg-white px-1 text-xs font-bold text-gray-600 z-10 pointer-events-none"><b>REBUTTAL [AGAINST]</b></label>
-                    <textarea id="rebuttalAgainst" name="rebuttalAgainst" class="autosize border p-2.5 pt-6 w-full h-[8vw] resize-none" placeholder="-" readonly></textarea>
-                </div>
-            </div>
-            <div class="col-start-2 flex gap-2 mt-3">
-                <div class="relative flex-1">
-                    <label for="followupFor" class="absolute top-2 left-2 bg-white px-1 text-xs font-bold text-gray-600 z-10 pointer-events-none"><b>FOLLOWUP [FOR]</b></label>
-                    <textarea id="followupFor" name="followupFor" class="autosize border p-2.5 pt-6 w-full h-[8vw] resize-none" placeholder="-" readonly></textarea>
-                </div>
-                <div class="relative flex-1">
-                    <label for="followupAgainst" class="absolute top-2 left-2 bg-white px-1 text-xs font-bold text-gray-600 z-10 pointer-events-none"><b>FOLLOWUP [AGAINST]</b></label>
-                    <textarea id="followupAgainst" name="followupAgainst" class="autosize border p-2.5 pt-6 w-full h-[8vw] resize-none" placeholder="-" readonly></textarea>
-                </div>
-            </div>
-        </div>
-    </div>
+    
 
     <script>
         const API_BASE = `http://localhost:3000`;
 
         const runBtn = document.getElementById('runBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const prevBtn = document.getElementById('prevBtn');
+        const summarizeBtn = document.getElementById('summarizeBtn');
         const modelToggle = document.getElementById('modelToggle');
         const perspectiveToggle = document.getElementById('perspectiveToggle');
-        const input = document.getElementById('inputArea');
+        const sumArea = document.getElementById('summarizeArea');
 
         const inputRow = document.getElementById('inputRow');
         const modelRow = document.getElementById('modelRow');
         const perspectiveRow = document.getElementById('perspectiveRow');
+        const perspective = document.getElementById("perspectives");
         const selA = document.getElementById('modelA')
         const selB = document.getElementById('modelB')
 
         // Elements that are inside the HTML
         const elements = {
-            summary: document.getElementById('summary'),
+            input: document.getElementById('inputArea'),
+            sumArea: document.getElementById('summarizeArea'),
             openingFor: document.getElementById('openingFor'),
             openingAgainst: document.getElementById('openingAgainst'),
-            rebuttalFor: document.getElementById('rebuttalFor'),
-            rebuttalAgainst: document.getElementById('rebuttalAgainst'),
-            followupFor: document.getElementById('followupFor'),
-            followupAgainst: document.getElementById('followupAgainst'),
+            labelFor: document.getElementById('labelFor'),
+            labelAgainst: document.getElementById('labelAgainst'),
         };
 
         // Selection of models
@@ -163,15 +140,33 @@
             "openai/gpt-5-mini",
         ];
 
+        const AVAILABLE_PERSPECTIVES = [
+            "Legality",
+            "Ethics",
+            "Morality",
+            "Economics",
+            "Public health",
+            "Environmental impact",
+            "Security/Risk",
+            "Human rights",
+            "Technical feasibility",
+            "Religion/Cultural values"
+        ]
+
         // Fill the dropdown with models
         function populateModels(selectEl, models){
             selectEl.innerHTML = models.map(m => `<option value="${m}">${m}</option>`).join('');
         }
 
+        function populatePerspectives (selection, perspectivePop){
+            selection.innerHTML = perspectivePop.map( m => `<option value="${m}">${m}</option>`).join('');
+        }
+
+        
         // Here is for autosizing the textarea
         function autosize (element){
             element.style.height = 'auto';
-            element.style.height = element.scrollHeight + 'px';
+            element.style.height = (element.scrollHeight - 2) + 'px';
         }
 
         // Here is to use the function made before and apply it to the textareas that have the label 'autosize'
@@ -184,19 +179,42 @@
             });
         }
 
-        function updatePerspectiveView(){
-            const perspectivePreview = document.getElementById('perspectivePreview');
-            const sel = document.getElementById('perspectives');
-            if (!perspectivePreview || !sel) return;
-            const optionsArray = Array.from(sel.selectedOptions || []);
-            if (optionsArray.length === 0){
-                perspectivePreview.textContent = 'Selected perspectives are: -';
+        let persOpen = false;
+        perspective.addEventListener('focus', () => {
+            if (!persOpen){
+                populatePerspectives(perspective, AVAILABLE_PERSPECTIVES);
+                perspective.size = Math.min(AVAILABLE_PERSPECTIVES.length, 6)
+                open=true;
             }
-            else{
+        });
+
+        perspective.addEventListener('blur', () => {
+            setTimeout(() => {
+                perspective.size=1;
+                open = false;
+                const optionsArray = Array.from(perspective.selectedOptions || []);
                 const labels = optionsArray.map(opt => opt.text.trim());
-                perspectivePreview.textContent = 'Selected perspectives are: ' + labels.join(', ');
-            }
-        }
+                if (optionsArray.length === 0){
+                    perspective.innerHTML = `<option value="placeholder" disabled>--Select Perspectives--</option>`
+                }
+                else{
+                    perspective.innerHTML = `<option value="placeholder" disabled>${labels.join(', ')}</option>`
+                }
+            }, 150);
+        });
+        // function updatePerspectiveView(){
+        //     const perspectivePreview = document.getElementById('perspectivePreview');
+        //     const sel = document.getElementById('perspectives');
+        //     if (!perspectivePreview || !sel) return;
+        //     const optionsArray = Array.from(sel.selectedOptions || []);
+        //     if (optionsArray.length === 0){
+        //         perspectivePreview.textContent = 'Selected perspectives are: -';
+        //     }
+        //     else{
+        //         const labels = optionsArray.map(opt => opt.text.trim());
+        //         perspectivePreview.textContent = 'Selected perspectives are: ' + labels.join(', ');
+        //     }
+        // }
 
         // What happens when the page first loads
         document.addEventListener('DOMContentLoaded', () => {
@@ -213,30 +231,70 @@
             updatePerspectiveView();
         });
 
-        modelToggle.addEventListener('change', (e) => {
-            modelRow.classList.toggle('hidden', !e.target.checked);
-        });
+        // modelToggle.addEventListener('change', (e) => {
+        //     modelRow.classList.toggle('hidden', !e.target.checked);
+        // });
 
-        perspectiveToggle.addEventListener('change', (e) => {
-            perspectiveRow.classList.toggle('hidden', !e.target.checked);
-            if (!perspectiveRow.classList.contains('hidden')) updatePerspectivePreview();
+        // perspectiveToggle.addEventListener('change', (e) => {
+        //     perspectiveRow.classList.toggle('hidden', !e.target.checked);
+        //     if (!perspectiveRow.classList.contains('hidden')) updatePerspectiveView();
+        // });
+
+        summarizeBtn.addEventListener('click', async() =>{
+            const text = sumArea.value.trim();
+            if (!text){
+                alert("Enter some text first");
+                return;
+            }
+            summarizeBtn.disabled = true;
+            const previousLabel = summarizeBtn.textContent;
+            summarizeBtn.textContent = "Running...";
+
+            try {
+                const response = await fetch('http://localhost:3000/api/summarize', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        text,
+                    })
+                });
+                const data = await response.json();
+                elements.input.value = data.summary;
+            }
+
+            catch(error){
+                alert("Error: " + error.message)
+            }
+
+            finally{
+                summarizeBtn.disabled = false;
+                summarizeBtn.textContent = previousLabel;
+            }
         });
+        let cycleOpeningFor = "";
+        let cycleOpeningAgainst = "";
+        let cycleRebuttalFor = "";
+        let cycleRebuttalAgainst = "";
+        let cycleFollowupFor = "";
+        let cycleFollowupAgainst = "";
 
         runBtn.addEventListener('click', async() => {
-            const text = input.value.trim();
+            const text = elements.input.value;
             if (!text) {
-                alert("Enter some text first.");
+                alert("Enter some text here or use the summarizer tool.");
                 return;
             }
 
-            const perspectiveSel = document.getElementById('perspectives');
-
-            let perspectives = "Morality";
+            let defaultPerspective = "Morality";
+            let currentPerspective;
             
-            if (perspectiveSel){
-                const optionsArray = Array.from(perspectiveSel.selectedOptions);
+            if (perspective){
+                const optionsArray = Array.from(perspective.selectedOptions);
                 const labels = optionsArray.map(opt => opt.text.trim());
-                perspectives = labels.join(', ');
+                currentPerspective = labels.join(', ');
+            }
+            else{
+                currentPerspective = defaultPerspective;
             }
             
             
@@ -252,20 +310,29 @@
                         text,
                         modelA: selA.value,
                         modelB: selB.value,
-                        perspectives
+                        perspectives: currentPerspective
                     })
                 });
                 const data = await response.json();
     
-                elements.summary.value = data.summary || "";
+                // elements.summary.value = data.summary || "";
                 elements.openingFor.value     = data.aOpeningClipped     || "";
                 elements.openingAgainst.value = data.bOpeningClipped     || "";
-                elements.rebuttalFor.value    = data.aRebuttalClipped    || "";
-                elements.rebuttalAgainst.value= data.bRebuttalClipped    || "";
-                elements.followupFor.value    = data.aFollowupClipped    || "";
-                elements.followupAgainst.value= data.bFollowupClipped    || "";
-                Object.values(elements).forEach(ta => autosize(ta));
+                autosize(elements.openingFor);
+                autosize(elements.openingAgainst);
+                cycleOpeningFor = data.aOpeningClipped || "";
+                cycleOpeningAgainst = data.bOpeningClipped || "";
+                cycleRebuttalFor = data.aRebuttalClipped || "";
+                cycleRebuttalAgainst = data.bRebuttalClipped || "";
+                cycleFollowupFor = data.aFollowupClipped || "";
+                cycleFollowupAgainst = data.bFollowupClipped || "";
 
+                // elements.rebuttalFor.value    = data.aRebuttalClipped    || "";
+                // elements.rebuttalAgainst.value= data.bRebuttalClipped    || "";
+                // elements.followupFor.value    = data.aFollowupClipped    || "";
+                // elements.followupAgainst.value= data.bFollowupClipped    || "";
+                Object.values(elements).forEach(ta => autosize(ta));
+                
 
                 // elements.opening.textContent = `FOR:\n${data.aOpeningClipped}\n\nAGAINST:\n${data.bOpeningClipped}`;
                 // elements.rebuttal.textContent = `FOR:\n${data.aRebuttalClipped}\n\nAGAINST:\n${data.bRebuttalClipped}`;
@@ -278,6 +345,81 @@
                 runBtn.textContent = previousLabel;
             }
         });
+
+        let cycle = 1;
+        nextBtn.addEventListener('click', async() => {
+            try{
+                if(!elements.openingFor.value){
+                    return;
+                }
+                if (cycle < 3){
+                    cycle++;
+                    if (cycle == 2){
+                        elements.openingFor.value = cycleRebuttalFor;
+                        elements.openingAgainst.value = cycleRebuttalAgainst;
+                        elements.labelFor.innerHTML = "Rebuttal — For"
+                        elements.labelAgainst.innerHTML = "Rebuttal — Against"
+                        autosize(elements.openingFor);
+                        autosize(elements.openingAgainst);
+                    }
+                    else if (cycle == 3){
+                        elements.openingFor.value = cycleFollowupFor;
+                        elements.openingAgainst.value = cycleFollowupAgainst;
+                        elements.labelFor.innerHTML = "Followup — For"
+                        elements.labelAgainst.innerHTML = "Followup — Against"
+                        autosize(elements.openingFor);
+                        autosize(elements.openingAgainst);
+                    }
+                    else{
+                        elements.openingFor.value = "uhh idk how you got here but report this to whoever gave the app";
+                        elements.openingAgainst.value = "uhh idk how you got here but report this to whoever gave the app";
+                    }
+                }
+                else{
+                    return;
+                }
+            } catch(e){
+                alert("Error: " + e.message);
+            }
+            
+        });
+        prevBtn.addEventListener('click', async() => {
+            try{
+                if(!elements.openingFor.value){
+                    return;
+                }
+                if (cycle > 1){
+                    cycle--;
+                    if (cycle == 1){
+                        elements.openingFor.value = cycleOpeningFor;
+                        elements.openingAgainst.value = cycleOpeningAgainst;
+                        elements.labelFor.innerHTML = "Opening — For";
+                        elements.labelAgainst.innerHTML = "Opening — Against";
+                        autosize(elements.openingFor);
+                        autosize(elements.openingAgainst);
+                    }
+                    else if (cycle == 2){
+                        elements.openingFor.value = cycleRebuttalFor;
+                        elements.openingAgainst.value = cycleRebuttalAgainst;
+                        elements.labelFor.innerHTML = "Rebuttal — For";
+                        elements.labelAgainst.innerHTML = "Rebuttal — Against";
+                        autosize(elements.openingFor);
+                        autosize(elements.openingAgainst);
+                    }
+                    else{
+                        elements.openingFor.value = "uhh idk how you got here but report this to whoever gave the app";
+                        elements.openingAgainst.value = "uhh idk how you got here but report this to whoever gave the app";
+                    }
+                }
+                else{
+                    return;
+                }
+            } catch(e){
+                alert("Error: " + e.message);
+            }
+            
+        });
+
     </script>
 
 </body>

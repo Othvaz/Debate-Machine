@@ -76,6 +76,10 @@ async function summarizeText(text){
 
 }
 
+async function summarizeLink(link){
+    return "";
+}
+
 async function modelOpenings(summary, MODEL_A, MODEL_B, perspective){
     
     const sysA = `You argue FOR the central claim. Your opposition will argue AGAINST the central claim. You will use ONLY the SUMMARY facts. Respond through lens of ${perspective}. 220-280 words. No insults.`;
@@ -109,8 +113,7 @@ async function modelFollowup(summary,oppositionOpeningA,oppositionRebuttalA,oppo
     return { aFollowupClipped: cliptoLastSentence(rawA), bFollowupClipped: cliptoLastSentence(rawB)};
 
 }
-
-app.post("/api/run", async (req,res) => {
+app.post("/api/summarize", async(req,res) =>{
     try{
         let userText;
         if (req.body && req.body.text){
@@ -121,17 +124,34 @@ app.post("/api/run", async (req,res) => {
         }
         if (!userText){return res.status(400).json({error:"Missing 'text' in body."});}
 
-        const modelA = req.body?.modelA || process.env.MODEL_A || "google/gemini-2.5-pro";
-        const modelB = req.body?.modelB || process.env.MODEL_B || "google/gemini-2.5-pro";
+        const summary = await summarizeText(userText);
+        res.json({summary});
+    }
+    catch(e){
+        res.status(500).json({error: String(e)});
+    }
+});
+
+app.post("/api/run", async (req,res) => {
+    try{
+        let userText;
+        if (req.body && req.body.summary){
+            userSummary = String(req.body.summary);
+        }
+        else{
+            userText = ""
+        }
+        if (!userText){return res.status(400).json({error:"Missing 'text' in body."});}
+
+        const modelA = req.body?.modelA || process.env.MODEL_A || "deepseek/deepseek-r1-0528";
+        const modelB = req.body?.modelB || process.env.MODEL_B || "deepseek/deepseek-r1-0528";
         console.log("Using models:", modelA, modelB);
 
         const perspectiveSelected = req.body?.perspectives || "Morality";
         
-
-        const summary = await summarizeText(userText);
-        const {aOpeningClipped, bOpeningClipped} = await modelOpenings(summary, modelA, modelB, perspectiveSelected);
-        const {aRebuttalClipped, bRebuttalClipped} = await modelRebuttals(summary,aOpeningClipped, bOpeningClipped, modelA, modelB, perspectiveSelected);
-        const {aFollowupClipped, bFollowupClipped} = await modelFollowup(summary,aOpeningClipped,aRebuttalClipped,bOpeningClipped,bRebuttalClipped, modelA, modelB, perspectiveSelected);
+        const {aOpeningClipped, bOpeningClipped} = await modelOpenings(userSummary, modelA, modelB, perspectiveSelected);
+        const {aRebuttalClipped, bRebuttalClipped} = await modelRebuttals(userSummary,aOpeningClipped, bOpeningClipped, modelA, modelB, perspectiveSelected);
+        const {aFollowupClipped, bFollowupClipped} = await modelFollowup(userSummary,aOpeningClipped,aRebuttalClipped,bOpeningClipped,bRebuttalClipped, modelA, modelB, perspectiveSelected);
 
         res.json({userText, summary, aOpeningClipped,bOpeningClipped,aRebuttalClipped,bRebuttalClipped,aFollowupClipped,bFollowupClipped});
     }
