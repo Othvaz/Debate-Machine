@@ -202,20 +202,21 @@
             if (!persOpen){
                 populatePerspectives(perspective, AVAILABLE_PERSPECTIVES);
                 perspective.size = Math.min(AVAILABLE_PERSPECTIVES.length, 6)
-                open=true;
+                persOpen=true;
             }
         });
-
+        let DTHHselectedPerspectives = "";
         perspective.addEventListener('blur', () => {
             setTimeout(() => {
                 perspective.size=1;
-                open = false;
+                persOpen = false;
                 const optionsArray = Array.from(perspective.selectedOptions || []);
                 const labels = optionsArray.map(opt => opt.text.trim());
                 if (optionsArray.length === 0){
                     perspective.innerHTML = `<option value="placeholder" disabled>--Select Perspectives--</option>`
                 }
                 else{
+                    DTHHselectedPerspectives = labels.join(', ');
                     perspective.innerHTML = `<option value="placeholder" disabled>${labels.join(', ')}</option>`
                 }
             }, 150);
@@ -306,15 +307,21 @@
             let defaultPerspective = "Morality";
             let currentPerspective;
             
-            if (perspective){
-                const optionsArray = Array.from(perspective.selectedOptions);
-                const labels = optionsArray.map(opt => opt.text.trim());
-                currentPerspective = labels.join(', ');
-            }
-            else{
+            // const optionsArray = Array.from(perspective.selectedOptions);
+            // if (optionsArray.length > 0){
+            //     const labels = optionsArray.map(opt => opt.text.trim());
+            //     currentPerspective = labels.join(', ');
+            // }
+            // else{
+            //     currentPerspective = defaultPerspective;
+            // }
+            
+            if (DTHHselectedPerspectives == ""){
                 currentPerspective = defaultPerspective;
             }
-            
+            else{
+                currentPerspective = DTHHselectedPerspectives;
+            }
             
             runBtn.disabled = true;
             const previousLabel = runBtn.textContent;
@@ -325,7 +332,7 @@
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
-                        text,
+                        summary: text,
                         modelA: selA.value,
                         modelB: selB.value,
                         perspectives: currentPerspective

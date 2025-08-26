@@ -135,13 +135,14 @@ app.post("/api/summarize", async(req,res) =>{
 app.post("/api/run", async (req,res) => {
     try{
         let userText;
+        let userSummary;
         if (req.body && req.body.summary){
             userSummary = String(req.body.summary);
         }
         else{
             userText = ""
         }
-        if (!userText){return res.status(400).json({error:"Missing 'text' in body."});}
+        if (userText === ""){return res.status(400).json({error:"Missing 'text' in body."});}
 
         const modelA = req.body?.modelA || process.env.MODEL_A || "deepseek/deepseek-r1-0528";
         const modelB = req.body?.modelB || process.env.MODEL_B || "deepseek/deepseek-r1-0528";
@@ -153,7 +154,7 @@ app.post("/api/run", async (req,res) => {
         const {aRebuttalClipped, bRebuttalClipped} = await modelRebuttals(userSummary,aOpeningClipped, bOpeningClipped, modelA, modelB, perspectiveSelected);
         const {aFollowupClipped, bFollowupClipped} = await modelFollowup(userSummary,aOpeningClipped,aRebuttalClipped,bOpeningClipped,bRebuttalClipped, modelA, modelB, perspectiveSelected);
 
-        res.json({userText, summary, aOpeningClipped,bOpeningClipped,aRebuttalClipped,bRebuttalClipped,aFollowupClipped,bFollowupClipped});
+        res.json({aOpeningClipped,bOpeningClipped,aRebuttalClipped,bRebuttalClipped,aFollowupClipped,bFollowupClipped});
     }
     catch (e){
         res.status(500).json({error: String(e)});
