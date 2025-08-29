@@ -270,7 +270,7 @@
             summarizeBtn.textContent = "Running...";
 
             try {
-                const response = await fetch('http://localhost:3000/api/summarize', {
+                const response = await fetch('/api/summarize', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
@@ -328,7 +328,7 @@
             runBtn.textContent = "Running...";
 
             try {
-                const response = await fetch('http://localhost:3000/api/run', {
+                const response = await fetch('/api/run', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
