@@ -56,7 +56,7 @@
           <div class="self-end">
             <!-- Simple on/off switch -->
             <label class="inline-flex items-center cursor-pointer">
-              <input type="checkbox" class="sr-only peer" id="toggleSwitch">
+              <input type="checkbox" class="sr-only peer fixed" id="toggleSwitch">
               <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
               <span class="ms-3 text-sm font-medium mr-3 text-gray-900">Link</span>
             </label>
@@ -67,7 +67,7 @@
                 <div class="absolute w-[48vw] h-[4vh] items-center text-center z-20 pointer-events-none bg-white px-2 text-hi left-1/2 transform top-[1px] -translate-x-1/2 text-transparent">aaa</div>
                 <label for="summarizeArea" class="absolute pl-[1.3vw] top-[1.5vh] pointer-events-none text-gray-500 z-30">Input Summarizer</label>
                 <textarea name="summarizeArea" id="summarizeArea" class="autosize w-[50vw] lg:pr-[12rem] sm:pr-[10rem] pr-[10rem] h-[20vh] pl-[1.3vw] pb-[10vh] pt-10 box-border z-10 border rounded-[20px] focus:outline-none" placeholder="Aw, shucks."></textarea>
-                <button id="summarizeBtn" class="absolute right-[2vw] bottom-[2vh] px-4 py-2 min-w-[6rem] border rounded-[20px] border-green-300 bg-green-400 hover:bg-green-500 text-white text-[13px]]">
+                <button type="button" id="summarizeBtn" class="absolute right-[2vw] bottom-[2vh] px-4 py-2 min-w-[6rem] border rounded-[20px] border-green-300 bg-green-400 hover:bg-green-500 text-white text-[13px]]">
                     <span class="hidden sm:inline">Summarize Input</span>
                     <span class="sm:hidden">▶</span>
                 </button>
@@ -96,7 +96,7 @@
                 <div class="absolute w-[48vw] h-[4vh] items-center text-center z-20 pointer-events-none bg-white px-2 text-hi left-1/2 transform top-[1px] -translate-x-1/2 text-transparent">aaa</div>
                 <label for="inputArea" class="absolute pl-[1.3vw] top-[1.5vh] pointer-events-none text-gray-500 z-30">Lovely</label> 
                 <textarea name="inputArea" id="inputArea" class="autosize w-[50vw] lg:pr-[12rem] sm:pr-[10rem] pr-[10rem] h-[20vh] pl-[1.3vw] pb-[10vh] pt-10 box-border z-10 border rounded-[20px] focus:outline-none" placeholder="Aw, shucks."></textarea>
-                <button id="runBtn" class="absolute right-[2vw] bottom-[2vh] px-4 py-2 min-w-[6rem] border rounded-[20px] border-green-300 bg-green-400 hover:bg-green-500 text-white text-[13px]]">
+                <button type="button" id="runBtn" class="absolute right-[2vw] bottom-[2vh] px-4 py-2 min-w-[6rem] border rounded-[20px] border-green-300 bg-green-400 hover:bg-green-500 text-white text-[13px]]">
                     <span class="hidden sm:inline">Initiate Debate</span>
                     <span class="sm:hidden">▶</span>
                 </button>
@@ -182,9 +182,11 @@
 
         
         // Here is for autosizing the textarea
-        function autosize (element){
-            element.style.height = 'auto';
-            element.style.height = (element.scrollHeight - 2) + 'px';
+        function autosize(el){
+            const y = window.scrollY;
+            el.style.height = 'auto';
+            el.style.height = el.scrollHeight + 'px';
+            window.scrollTo(0, y);
         }
 
         // Here is to use the function made before and apply it to the textareas that have the label 'autosize'
@@ -221,19 +223,6 @@
                 }
             }, 150);
         });
-        // function updatePerspectiveView(){
-        //     const perspectivePreview = document.getElementById('perspectivePreview');
-        //     const sel = document.getElementById('perspectives');
-        //     if (!perspectivePreview || !sel) return;
-        //     const optionsArray = Array.from(sel.selectedOptions || []);
-        //     if (optionsArray.length === 0){
-        //         perspectivePreview.textContent = 'Selected perspectives are: -';
-        //     }
-        //     else{
-        //         const labels = optionsArray.map(opt => opt.text.trim());
-        //         perspectivePreview.textContent = 'Selected perspectives are: ' + labels.join(', ');
-        //     }
-        // }
 
         // What happens when the page first loads
         document.addEventListener('DOMContentLoaded', () => {
@@ -250,16 +239,8 @@
             updatePerspectiveView();
         });
 
-        // modelToggle.addEventListener('change', (e) => {
-        //     modelRow.classList.toggle('hidden', !e.target.checked);
-        // });
-
-        // perspectiveToggle.addEventListener('change', (e) => {
-        //     perspectiveRow.classList.toggle('hidden', !e.target.checked);
-        //     if (!perspectiveRow.classList.contains('hidden')) updatePerspectiveView();
-        // });
-
-        summarizeBtn.addEventListener('click', async() =>{
+        summarizeBtn.addEventListener('click', async(e) =>{
+            e.preventDefault();
             const text = sumArea.value.trim();
             if (!text){
                 alert("Enter some text first");
@@ -279,6 +260,7 @@
                 });
                 const data = await response.json();
                 elements.input.value = data.summary;
+                autosize(elements.input);
             }
 
             catch(error){
@@ -307,14 +289,6 @@
             let defaultPerspective = "Morality";
             let currentPerspective;
             
-            // const optionsArray = Array.from(perspective.selectedOptions);
-            // if (optionsArray.length > 0){
-            //     const labels = optionsArray.map(opt => opt.text.trim());
-            //     currentPerspective = labels.join(', ');
-            // }
-            // else{
-            //     currentPerspective = defaultPerspective;
-            // }
             
             if (DTHHselectedPerspectives == ""){
                 currentPerspective = defaultPerspective;
