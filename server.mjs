@@ -1,8 +1,48 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import pkg from "pg";
+const { Pool } = pkg;
 
-dotenv.config();
+dotenv.config({ override: true });
+const pool = new Pool({connectionString: process.env.DATABASE_URL});
+
+// async function insertValue(){
+//     const client = await pool.connect();
+//     try{
+//         await client.query('BEGIN');
+//         const r1 = await client.query(`
+//             INSERT INTO debateInput(debateInputText, modelA, modelB, perspectives)
+//             VALUES ($1, $2, $3, $4) RETURNING debateinputid AS id
+//             `, ['Why is it that some are given the role of X', 'google/gemini-2.5-pro','mistral/magistral-small',['Ethics', 'Religion']]);    
+//         const inputId = r1.rows[0].id;
+
+//         const r2 = await client.query(`
+//             INSERT INTO debateOutput(
+//             debateInputId,
+//             debateOutputTextOpeningFor,
+//             debateOutputTextOpeningAgainst,
+//             debateOutputTextRebuttalFor,
+//             debateOutputTextRebuttalAgainst,
+//             debateOutputTextFollowupFor,
+//             debateOutputTextFollowupAgainst
+//             ) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING debateoutputid as id
+//             `, [inputId, 'For opening', 'Against opening', 'For rebuttal', 'Against rebuttal', 'For followup', 'Against followup']
+//         );
+
+//         await client.query('COMMIT');
+//         console.log('Inserted: ', {inputId, outputId: r2.rows[0].id});
+//     }
+//     catch (err){
+//         await client.query('ROLLBACK').catch(()=>{});
+//         console.error('Error: ', err.message);
+//     }
+//     finally{
+//         client.release();
+//     }
+// }
+
+// insertValue();
 
 const app = express();
 app.use(cors());
@@ -73,7 +113,6 @@ async function summarizeText(text){
     const SYS =  "Summarize the article in 8-12 bullet points. Be neutral, factual. Include concrete dates, numbers, names. No opinion of your own. Only respond with the summary and nothing more. Do not include any openings such as 'Here is a summary of...'. Get straight to the point.";
     const raw = await chat(MODEL,SYS,text,0.2,false,2000);
     return cliptoLastSentence(raw);
-
 }
 
 async function summarizeLink(link){
@@ -114,17 +153,42 @@ async function modelFollowup(summary,oppositionOpeningA,oppositionRebuttalA,oppo
 
 }
 app.post("/api/summarize", async(req,res) =>{
+    let userText;
     try{
-        let userText;
         if (req.body && req.body.text){
             userText = String(req.body.text);
         }
         else{
             userText = ""
         }
-        if (!userText){return res.status(400).json({error:"Missing 'text' in body."});}
+        if (userText == ""){return res.status(400).json({error:"Missing 'text' in body."});}
 
         const summary = await summarizeText(userText);
+        let client;
+
+        try{
+            client = await pool.connect();
+            await client.query('BEGIN');
+
+            const r1 = await client.query(`
+                INSERT INTO summaryInput(summaryInputText) VALUES ($1) RETURNING summaryinputid as id
+                `, [userText]);
+            const inputId = r1.rows[0].id;
+
+            const r2 = await client.query(`
+                INSERT INTO summaryOutput (summaryInputId, summaryOutputText) VALUES ($1, $2) RETURNING summaryoutputid as id
+                `, [inputId, summary]);
+
+            await client.query('COMMIT');
+            console.log('Inserted: ', {inputId, outputId:r2.rows[0].id});
+        }
+        catch (dbErr){
+            if (client) await client.query('ROLLBACK').catch(()=>{});
+            console.log("Got an error:", {dbErr})
+        }
+        finally{
+            if (client) client.release();
+        }
         res.json({summary});
     }
     catch(e){
@@ -134,26 +198,90 @@ app.post("/api/summarize", async(req,res) =>{
 
 app.post("/api/run", async (req,res) => {
     try{
-        let userText;
         let userSummary;
         if (req.body && req.body.summary){
             userSummary = String(req.body.summary);
         }
         else{
-            userText = ""
+            userSummary = ""
         }
-        if (userText === ""){return res.status(400).json({error:"Missing 'text' in body."});}
+        if (userSummary === ""){return res.status(400).json({error:"Missing 'text' in body."});}
+        
 
         const modelA = req.body?.modelA || process.env.MODEL_A || "deepseek/deepseek-r1-0528";
         const modelB = req.body?.modelB || process.env.MODEL_B || "deepseek/deepseek-r1-0528";
         console.log("Using models:", modelA, modelB);
 
         const perspectiveSelected = req.body?.perspectives || "Morality";
-        
+        let rawPerspective = perspectiveSelected;
+        let processedPerspective = rawPerspective
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+
+        processedPerspective = Array.from(new Set(processedPerspective)).sort((a,b)=> a.localeCompare(b));
+
+        const theQuery = `
+        SELECT
+        o.debateOutputTextOpeningFor  AS "aOpeningClipped",
+        o.debateOutputTextOpeningAgainst AS "bOpeningClipped",
+        o.debateOutputTextRebuttalFor AS "aRebuttalClipped",
+        o.debateOutputTextRebuttalAgainst AS "bRebuttalClipped",
+        o.debateOutputTextFollowupFor AS "aFollowupClipped",
+        o.debateOutputTextFollowupAgainst AS "bFollowupClipped"
+        FROM debateInput d
+        JOIN debateOutput o ON o.debateInputId = d.debateInputId
+        WHERE d.debateInputText = $1
+        AND d.modelA = $2
+        AND d.modelB = $3
+        AND d.perspectives = $4
+        LIMIT 1
+        `;
+        const cached = await pool.query(theQuery, [userSummary, modelA, modelB, processedPerspective]);
+        if (cached.rows.length){
+            const r = cached.rows[0];
+            return res.json({
+                aOpeningClipped: r.aOpeningClipped,
+                bOpeningClipped: r.bOpeningClipped,
+                aRebuttalClipped: r.aRebuttalClipped,
+                bRebuttalClipped: r.bRebuttalClipped,
+                aFollowupClipped: r.aFollowupClipped,
+                bFollowupClipped: r.bFollowupClipped,
+                cached: true
+                });
+        }
+
         const {aOpeningClipped, bOpeningClipped} = await modelOpenings(userSummary, modelA, modelB, perspectiveSelected);
         const {aRebuttalClipped, bRebuttalClipped} = await modelRebuttals(userSummary,aOpeningClipped, bOpeningClipped, modelA, modelB, perspectiveSelected);
         const {aFollowupClipped, bFollowupClipped} = await modelFollowup(userSummary,aOpeningClipped,aRebuttalClipped,bOpeningClipped,bRebuttalClipped, modelA, modelB, perspectiveSelected);
+        
+        let client;
+        try{
+            client = await pool.connect();
+            await client.query('BEGIN');
 
+            const r1 = await client.query(`
+                INSERT INTO debateInput(debateInputText, modelA, modelB, perspectives) VALUES ($1, $2, $3, $4) RETURNING debateinputid AS id
+                `, [userSummary, modelA, modelB, processedPerspective]);
+            
+            const inputId = r1.rows[0].id;
+
+            const r2 = await client.query(`
+                INSERT INTO debateOutput(debateInputId, debateOutputTextOpeningFor, debateOutputTextOpeningAgainst, debateOutputTextRebuttalFor, debateOutputTextRebuttalAgainst, debateOutputTextFollowupFor, debateOutputTextFollowupAgainst) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING debateOutputId AS id
+                `, [inputId, aOpeningClipped,bOpeningClipped,aRebuttalClipped,bRebuttalClipped,aFollowupClipped,bFollowupClipped]);
+            
+            await client.query('COMMIT');
+            console.log("Inserted: ", {inputId, outputId:r2.rows[0].id});
+        }
+        catch (dbErr){
+            if (client) await client.query('ROLLBACK').catch(()=>{});
+            console.log("Got an error:", {dbErr});
+
+        }
+
+        finally{
+            if (client) client.release();
+        }
         res.json({aOpeningClipped,bOpeningClipped,aRebuttalClipped,bRebuttalClipped,aFollowupClipped,bFollowupClipped});
     }
     catch (e){
@@ -164,3 +292,4 @@ app.post("/api/run", async (req,res) => {
 app.listen(3000, () => {
     console.log("Server listening on http://localhost:3000.. or something?");   
 });
+
