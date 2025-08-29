@@ -7,43 +7,6 @@ const { Pool } = pkg;
 dotenv.config({ override: true });
 const pool = new Pool({connectionString: process.env.DATABASE_URL});
 
-// async function insertValue(){
-//     const client = await pool.connect();
-//     try{
-//         await client.query('BEGIN');
-//         const r1 = await client.query(`
-//             INSERT INTO debateInput(debateInputText, modelA, modelB, perspectives)
-//             VALUES ($1, $2, $3, $4) RETURNING debateinputid AS id
-//             `, ['Why is it that some are given the role of X', 'google/gemini-2.5-pro','mistral/magistral-small',['Ethics', 'Religion']]);    
-//         const inputId = r1.rows[0].id;
-
-//         const r2 = await client.query(`
-//             INSERT INTO debateOutput(
-//             debateInputId,
-//             debateOutputTextOpeningFor,
-//             debateOutputTextOpeningAgainst,
-//             debateOutputTextRebuttalFor,
-//             debateOutputTextRebuttalAgainst,
-//             debateOutputTextFollowupFor,
-//             debateOutputTextFollowupAgainst
-//             ) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING debateoutputid as id
-//             `, [inputId, 'For opening', 'Against opening', 'For rebuttal', 'Against rebuttal', 'For followup', 'Against followup']
-//         );
-
-//         await client.query('COMMIT');
-//         console.log('Inserted: ', {inputId, outputId: r2.rows[0].id});
-//     }
-//     catch (err){
-//         await client.query('ROLLBACK').catch(()=>{});
-//         console.error('Error: ', err.message);
-//     }
-//     finally{
-//         client.release();
-//     }
-// }
-
-// insertValue();
-
 const app = express();
 app.use(cors());
 app.use(express.json({limit: "1mb"}));
@@ -152,6 +115,28 @@ async function modelFollowup(summary,oppositionOpeningA,oppositionRebuttalA,oppo
     return { aFollowupClipped: cliptoLastSentence(rawA), bFollowupClipped: cliptoLastSentence(rawB)};
 
 }
+
+app.get("api/models", async(req,res) => {
+    try {
+        const getRes = await fetch(`${OPENROUTER_BASE}/api/v1/models`, {
+            method: "GET",
+            headers: {
+                Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`
+            }
+        });
+        
+        if (!getRes.ok){
+            const text = await getRes.text();
+            return res.status(getRes.status).json({error: `Openrouter ${getRes.status}: ${text}`});
+        }
+        const j = await getRes.json();
+        const models = Array.isArray(j.data) ? j.data : (Array.isArray(j.models) ? j.models : []);
+        return res.json({data: models});
+    } catch (err) {
+        return res.status(500).json({error: err.message});
+    }
+});
+
 app.post("/api/summarize", async(req,res) =>{
     let userText;
     try{
