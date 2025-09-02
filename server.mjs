@@ -1,4 +1,4 @@
-import express from "express";
+import express, { json } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import pkg from "pg";
@@ -42,7 +42,7 @@ async function chat(model, systemText, userText, temperature = 0.2, jsonMode = f
             "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
             "Content-Type": "application/json",
             "HTTP-Referer": "http://localhost",
-            "X-Title": "NewsDebateWeb",
+            "X-Title": "NewsDebateWeb"
         },
         body: JSON.stringify(body)
     });
@@ -54,6 +54,121 @@ async function chat(model, systemText, userText, temperature = 0.2, jsonMode = f
     const data = await response.json();
     return data.choices[0].message.content;
 }
+
+
+//let's figure this out together.
+
+//we're trying to receive from openrouter, specify that we want it to be stream data, not normal
+async function chatStream(model, systemText, userText, contentType, res){
+    //what does chatstream take in? what do we need chatstream for? it will be the method where every request is forwarded to OR and the response is taken and redistributed into a newer stream.
+
+    if (!res.headersSent){
+        res.setHeader("Content-Type", "application/x-ndjson");
+        res.setHeader("Connection", "keep-alive");
+        res.setHeader("Cache-Control", "no-cache");
+        res.flushHeaders?.();
+    }
+
+    let messages = [];
+    if (systemText){
+        messages.push({role: "system", content: systemText});
+    }
+    messages.push({role: "user", content:userText});
+
+
+
+    //okay, we've set what we want our respose to the server will look like. now to call from openrouter
+    const response = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
+        method: "POST",
+        headers: {
+            "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+            "Content-Type": 'application/json',
+            "HTTP-Referer": 'http://localhost',
+            "X-Title": 'NewsDebateWeb,'
+        },
+        body: JSON.stringify({
+            model: model,
+            messages: messages,
+            stream: true
+        })
+    });
+
+    if (!response.ok){
+        const errorText = await response.text();
+        console.log(`Error at getting a response: ${response.status} - ${errorText}`);
+        res.write(JSON.stringify({
+            type: "error",
+            text: `OpenRouter API error: ${response.status} - ${errorText}`
+        }) + "\n");
+        res.end();
+        return;
+    }
+
+    let buffer = '';
+    const decoder = new TextDecoder();
+    const reader = response?.body.getReader();
+    if(!reader){
+        res.write(JSON.stringify({
+            type: "error",
+            text: "um, reader is outputting an error. find the issue."
+        }) + "\n");
+        res.end();
+        return;
+    }
+
+    let full = '';
+
+    while (true){
+        const {done, value} = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value);
+        
+        while (true){
+            let lineEnd = buffer.indexOf('\n');
+            if (lineEnd === -1) break;
+
+
+            let line = buffer.slice(0, lineEnd);
+            buffer = buffer.slice(lineEnd+1);
+
+            if (line.startsWith('data: ')){
+                const data = line.slice(6)
+                if (data === "[DONE]") {
+                    res.write(JSON.stringify({type:"segment_done"}, contentType) + "\n");
+                    return full.trim();
+                }
+                try{
+                    const parsed = JSON.parse(data);
+                    const content = parsed.choices[0].delta.content;
+                    if(content){
+                        full += content;
+                        res.write(JSON.stringify({
+                            type: "token",
+                            contentType,
+                            text: content
+                        }) + "\n");
+                    }
+                }
+                catch(e){
+                    console.log("erro at trying to get dodo");
+                    res.write(JSON.stringify({
+                        type: "error",
+                        text: `error trying to get dodo, with message ${e}`
+                    }) + "\n");
+                }
+            }
+
+            // supposedly after this part, we've completed reading and sending the data strea onto the chat stream. now we need to make sure when we call this in app.post, we reference the res. 
+
+
+
+        }
+    }
+    //we have our response. 
+
+}
+
+
 
 function cliptoLastSentence(text){
     const t = text.trim();
@@ -78,9 +193,168 @@ async function summarizeText(text){
     return cliptoLastSentence(raw);
 }
 
-async function summarizeLink(link){
-    return "";
-}
+// async function summarizeLink(link){
+//     const MODEL = process.env.SUMMARY_MODEL;
+//     const SYS =  "Summarize the article in 8-12 bullet points. Be neutral, factual. Include concrete dates, numbers, names. No opinion of your own. Only respond with the summary and nothing more. Do not include any openings such as 'Here is a summary of...'. Get straight to the point.";
+//     const raw = await chat(MODEL,SYS,text,0.2,false,2000);
+//     return raw;
+// }
+app.post("/api/summarize/stream", async (req, res) => {
+    const MODEL = process.env.SUMMARY_MODEL;
+    const SYS =  "Summarize the article in 8-12 bullet points. Be neutral, factual. Include concrete dates, numbers, names. No opinion of your own. Only respond with the summary and nothing more. Do not include any openings such as 'Here is a summary of...'. Get straight to the point.";
+    const USTXT = req?.body?.text;
+    const contentType = "summary";
+    try{
+        const summarizeStream = await chatStream(MODEL, SYS, USTXT, contentType, res);
+        let client;
+        try{
+            client = await pool.connect();
+            await client.query("BEGIN");
+
+            const r1 = await client.query(
+                `INSERT INTO summaryInput (summaryInputText)
+                 VALUES ($1)
+                 RETURNING summaryinputid AS id`,
+                [USTXT]
+            );
+            const inputId = r1.rows[0].id;
+
+            const r2= await client.query(
+                `INSERT INTO summaryOutput (summaryInputId, summaryOutputText)
+                 VALUES ($1, $2)
+                 RETURNING summaryoutputid AS id`,
+                [inputId, summarizeStream]
+            );
+            await client.query("COMMIT");
+            console.log('Inserted: ', {inputId, outputId:r2.rows[0].id});
+
+        }
+        catch(err){
+            if (client) await client.query("ROLLBACK").catch(() => {});
+            res.write(JSON.stringify({ type: "error", text: `Error: ${err.message}` }) + "\n");
+        }
+        finally{
+            if (client) client.release();
+        }
+        res.write(JSON.stringify({ done: true }) + "\n");
+        res.end();
+    }
+    catch(err){
+        if (!res.headersSent) {
+            return res.status(500).json({ error: String(err) });
+        }
+        res.write(JSON.stringify({ type: "error", text: String(err) }) + "\n");
+        res.end();
+    }
+
+});
+
+app.post("/api/run/stream", async (req, res) => {
+    try{
+        const summary = req?.body?.summary;
+        const modelA = req?.body?.modelA;
+        const modelB = req?.body?.modelB;
+        const perspective = req?.body?.perspectives || "Morality";
+    
+        if (!summary){
+            return res.status(400).json({error: "missing 'summary'!! WHY??!"});
+        }
+        if (!modelA || !modelB){
+            return res.status(400).json({error: "missing 'modelA or modelB'!! WHY??!"});
+        }
+        
+        const openingSystemA = `You argue FOR the central claim. Your opposition will argue AGAINST the central claim. You will use ONLY the SUMMARY facts. Respond through lens of ${perspective}. 220-280 words. No insults.`;
+        const openingSystemB = `You argue AGAINST the central claim. Your opposition will argue FOR the central claim. You will use ONLY the SUMMARY facts. Respond through lens of ${perspective}. 220-280 words. No insults.`;
+    
+        const rebuttalSystemA = `You argue FOR the central claim. Respond directly to the opponent's opening using only the SUMMARY and facts. Respond through lens of ${perspective}. 160-220 words. No insults. All in one line.`;
+        const rebuttalSystemB = `You argue AGAINST the central claim. Respond directly to the opponent's opening using only the SUMMARY and facts. Respond through lens of ${perspective}. 160-220 words. No insults. All in one line.`;
+    
+        const followupSystemA = `You argue FOR the central claim. Respond directly to the opponent's opening and their rebuttal using only the SUMMARY and facts. Respond through lens of ${perspective}. 160-220 words. No insults. All in one line.`;
+        const followupSystemB = `You argue AGAINST the central claim. Respond directly to the opponent's opening and their rebuttal using only the SUMMARY and facts. Respond through lens of ${perspective}. 160-220 words. No insults. All in one line.`;
+    
+        const outputOpeningA = await chatStream(modelA, openingSystemA,`SUMMARY:\n${summary}\n\nWrite your opening.`,"openingA", res);
+    
+        const outputOpeningB = await chatStream(modelB, openingSystemB,`SUMMARY:\n${summary}\n\nWrite your opening.`,"openingB", res);
+        const outputRebuttalA = await chatStream(modelA, rebuttalSystemA, `SUMMARY:\n${summary}\n\nOPPOSITION'S OPENING (AGAINST):\n${outputOpeningB}\n\nWrite your rebuttal.`, "rebuttalA", res);
+        const outputRebuttalB = await chatStream(modelB, rebuttalSystemB, `SUMMARY:\n${summary}\n\nOPPOSITION'S OPENING (FOR):\n${outputOpeningA}\n\nWrite your rebuttal.`, "rebuttalB", res);
+        const outputFollowupA = await chatStream(modelA, followupSystemA, `SUMMARY:\n${summary}\n\nYOUR OPENING STATEMENT (FOR):\n${outputOpeningA}\n\nOPPOSITION'S OPENING (AGAINST):\n${outputOpeningB}\n\nOPPOSITION'S REBUTTAL TO YOUR OPENING:\n${outputRebuttalB}\n\nWrite your followup regarding all this.`, "followupA", res);
+        const outputFollowupB = await chatStream(modelB, followupSystemB, `SUMMARY:\n${summary}\n\nYOUR OPENING STATEMENT (AGAINST):\n${outputOpeningB}\n\nOPPOSITION'S OPENING (FOR):\n${outputOpeningA}\n\nOPPOSITION'S REBUTTAL TO YOUR OPENING:\n${outputRebuttalA}\n\nWrite your followup regarding all this.`, "followupB", res);
+
+        const perspectiveSelected = req?.body?.perspectives || "Morality";
+        const processedPerspective = Array.from(
+        new Set(String(perspectiveSelected).split(',').map(s => s.trim()).filter(Boolean))
+        ).sort((a,b) => a.localeCompare(b));
+
+        let client;
+        try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const r1 = await client.query(
+            `INSERT INTO debateInput (debateInputText, modelA, modelB, perspectives)
+            VALUES ($1, $2, $3, $4)
+            RETURNING debateinputid AS id`,
+            [summary, modelA, modelB, processedPerspective]
+        );
+        const inputId = r1.rows[0].id;
+
+        const r2 = await client.query(
+            `INSERT INTO debateOutput (
+            debateInputId,
+            debateOutputTextOpeningFor,
+            debateOutputTextOpeningAgainst,
+            debateOutputTextRebuttalFor,
+            debateOutputTextRebuttalAgainst,
+            debateOutputTextFollowupFor,
+            debateOutputTextFollowupAgainst
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7)
+            RETURNING debateoutputid AS id`,
+            [
+            inputId,
+            outputOpeningA,
+            outputOpeningB,
+            outputRebuttalA,
+            outputRebuttalB,
+            outputFollowupA,
+            outputFollowupB
+            ]
+        );
+
+        await client.query('COMMIT');
+        console.log('Inserted: ', {inputId, outputId:r2.rows[0].id});
+
+
+        } catch (dbErr) {
+        if (client) await client.query('ROLLBACK').catch(() => {});
+        res.write(JSON.stringify({ type: "warn", text: `db error: ${dbErr.message}` }) + "\n");
+        } finally {
+            if (client) client.release();
+        }
+
+        res.write(JSON.stringify({
+            done: true,
+            payload: {
+                openingA: outputOpeningA,
+                openingB: outputOpeningB,
+                rebuttalA: outputRebuttalA,
+                rebuttalB: outputRebuttalB,
+                followupA: outputFollowupA,
+                followupB: outputFollowupB
+            }
+        }) + "\n");
+
+        res.end();
+    }
+    catch(err){
+        if (res.headersSent){
+            res.write(JSON.stringify({ error: String(err) }) + "\n");
+            res.end();
+        }
+        else {
+            res.status(500).json({ error: String(err) });
+        }
+    }
+});
 
 async function modelOpenings(summary, MODEL_A, MODEL_B, perspective){
     
@@ -115,27 +389,6 @@ async function modelFollowup(summary,oppositionOpeningA,oppositionRebuttalA,oppo
     return { aFollowupClipped: cliptoLastSentence(rawA), bFollowupClipped: cliptoLastSentence(rawB)};
 
 }
-
-app.get("api/models", async(req,res) => {
-    try {
-        const getRes = await fetch(`${OPENROUTER_BASE}/api/v1/models`, {
-            method: "GET",
-            headers: {
-                Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`
-            }
-        });
-        
-        if (!getRes.ok){
-            const text = await getRes.text();
-            return res.status(getRes.status).json({error: `Openrouter ${getRes.status}: ${text}`});
-        }
-        const j = await getRes.json();
-        const models = Array.isArray(j.data) ? j.data : (Array.isArray(j.models) ? j.models : []);
-        return res.json({data: models});
-    } catch (err) {
-        return res.status(500).json({error: err.message});
-    }
-});
 
 app.post("/api/summarize", async(req,res) =>{
     let userText;
@@ -179,6 +432,22 @@ app.post("/api/summarize", async(req,res) =>{
     catch(e){
         res.status(500).json({error: String(e)});
     }
+});
+
+app.post("/api/buttonforTesting", async(req, res) => {
+    res.setHeader("Content-Type", "application/x-ndjson");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders?.();
+    if (req?.body?.text == "dodoTest"){
+        console.log("dodoTest received.")
+        res.write(JSON.stringify({type:"dodo", content: "dodobird"}));
+        res.end();
+    }
+    else{   
+        console.log("dodoTest NOT received.")
+    }
+
+    
 });
 
 app.post("/api/run", async (req,res) => {

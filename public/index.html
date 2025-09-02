@@ -48,7 +48,6 @@
              bg-gradient-to-r from-sky-300 via-indigo-300 to-fuchsia-300
              animate-gradient text-slate-900">
     <div class="w-full h-full text-center mt-[10vh] mb-[10vh] items-center flex flex-col">
-        <!-- Title + Dropdowns row (directly above textarea) -->
         <div class="w-[50vw] flex items-center gap-4">
           <h1 class="flex-1 text-start font-mono text-[20px]">
             <b>Extra Super<br>Debator Program</b>
@@ -167,7 +166,12 @@
                 .map(m => m.canonical_slug || m.id || m.name)
                 .filter(Boolean);
 
-                const dnS = Array.from(new Set(ids)).sort();
+                const filteredIds = ids.filter(id => {
+                    const provider = id.split('/')[0];
+                    return ['google', 'anthropic', 'x.ai', 'deepseek', 'openai'].includes(provider);
+                });
+
+                const dnS = Array.from(new Set(filteredIds)).sort();
                 if (dnS.length === 0) throw new Error('no models?');
                 populateModels(selA, dnS);
                 populateModels(selB, dnS);
@@ -239,10 +243,11 @@
                 const optionsArray = Array.from(perspective.selectedOptions || []);
                 const labels = optionsArray.map(opt => opt.text.trim());
                 if (optionsArray.length === 0){
-                    perspective.innerHTML = `<option value="placeholder" disabled>--Select Perspectives--</option>`
+                    perspective.innerHTML = `<option value="placeholder" disabled>--Select Perspectives--</option>`;
+                    DTHHselectedPerspectives = "";
                 }
                 else{
-                    selectedPerspectives = labels.join(', ');
+                    DTHHselectedPerspectives = labels.join(', ');
                     perspective.innerHTML = `<option value="placeholder" disabled>${labels.join(', ')}</option>`
                 }
             }, 150);
@@ -274,18 +279,58 @@
             summarizeBtn.textContent = "Running...";
 
             try {
-                const response = await fetch('http://localhost:3000/api/summarize', {
+                const response = await fetch('/api/summarize/stream', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
                         text,
                     })
                 });
-                const data = await response.json();
-                elements.input.value = data.summary;
+
+                if (!response.ok){
+                    alert("what's going on? ", response.status);
+                }
+                let buffer = '';
+                let output = '';
+                const data = response?.body?.getReader();
+
+                const decoder = new TextDecoder();
+                while(true){
+                    const {done, value} = await data.read();
+                    if (done) {
+                        break;
+                    }
+
+                    buffer += decoder.decode(value, {stream:true});
+
+                    // here is to process the lines that are received by the buffer.
+                    while(true){
+                        const lineEnd = buffer.indexOf('\n');
+                        if (lineEnd === -1){
+                            break;
+                        }
+
+                        const line = buffer.slice(0, lineEnd);
+                        
+                        if (!line){
+                            continue;
+                        }
+                        buffer = buffer.slice(lineEnd+1);
+
+                        const parsed = JSON.parse(line);
+                        if (parsed.contentType === 'summary'){
+                            output += parsed.text;                      // if (parsed.type === "dodo"){
+                            elements.input.value = output;
+                            autosize(elements.input);
+                        }
+
+                    }
+                }
+
+                // elements.input.value = data.summary;
                 autosize(elements.input);
             }
-
+            
             catch(error){
                 alert("Error: " + error.message)
             }
@@ -295,12 +340,45 @@
                 summarizeBtn.textContent = previousLabel;
             }
         });
+        
         let cycleOpeningFor = "";
         let cycleOpeningAgainst = "";
         let cycleRebuttalFor = "";
         let cycleRebuttalAgainst = "";
         let cycleFollowupFor = "";
         let cycleFollowupAgainst = "";
+        let cycle = 1;
+
+        function getCycle(){
+            if (cycle == 1){
+                elements.openingFor.value = cycleOpeningFor;
+                elements.openingAgainst.value = cycleOpeningAgainst;
+                elements.labelFor.innerHTML = "Opening — For";
+                elements.labelAgainst.innerHTML = "Opening — Against";
+                autosize(elements.openingFor);
+                autosize(elements.openingAgainst);
+            }
+            else if (cycle == 2){
+                elements.openingFor.value = cycleRebuttalFor;
+                elements.openingAgainst.value = cycleRebuttalAgainst;
+                elements.labelFor.innerHTML = "Rebuttal — For";
+                elements.labelAgainst.innerHTML = "Rebuttal — Against";
+                autosize(elements.openingFor);
+                autosize(elements.openingAgainst);
+            }
+            else if (cycle == 3){
+                elements.openingFor.value = cycleFollowupFor;
+                elements.openingAgainst.value = cycleFollowupAgainst;
+                elements.labelFor.innerHTML = "Followup — For"
+                elements.labelAgainst.innerHTML = "Followup — Against"
+                autosize(elements.openingFor);
+                autosize(elements.openingAgainst);
+            }
+            else{
+                elements.openingFor.value = "uhh idk how you got here but report this to whoever gave the app";
+                elements.openingAgainst.value = "uhh idk how you got here but report this to whoever gave the app";
+            }
+        }
 
         runBtn.addEventListener('click', async() => {
             const text = elements.input.value;
@@ -309,23 +387,14 @@
                 return;
             }
 
-            let defaultPerspective = "Morality";
-            let currentPerspective;
-            
-            
-            if (DTHHselectedPerspectives == ""){
-                currentPerspective = defaultPerspective;
-            }
-            else{
-                currentPerspective = DTHHselectedPerspectives;
-            }
+            currentPerspective = DTHHselectedPerspectives || Array.from(perspective.selectedOptions || []).map(m => m.text.trim()).join(', ') || "Morality";
             
             runBtn.disabled = true;
             const previousLabel = runBtn.textContent;
             runBtn.textContent = "Running...";
 
             try {
-                const response = await fetch('http://localhost:3000/api/run', {
+                const response = await fetch('/api/run/stream', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
@@ -335,30 +404,83 @@
                         perspectives: currentPerspective
                     })
                 });
-                const data = await response.json();
+
+                // let superbArray = [
+                //     ["openingA", "openingB", "rebuttalA", "rebuttalB", "followupA", "followupB"],
+                //     [cycleOpeningFor, cycleOpeningAgainst, cycleRebuttalFor, cycleRebuttalAgainst, cycleFollowupFor, cycleFollowupAgainst]
+                // ];
+                if (!response.ok){
+                    alert("be honored in my presence", response.status);
+                }
+                let buffer = '';
+                let output = '';
+                const data = response?.body?.getReader();
+
+                const decoder = new TextDecoder();
+                while (true){
+                    const {done, value} = await data.read();
+                    if (done){
+                        break;
+                    }
+                    buffer += decoder.decode(value, {stream: true});
+                    while(true){
+                        const lineEnd = buffer.indexOf("\n");
+                        if (lineEnd === -1){
+                            break;
+                        }
+                        const line = buffer.slice(0, lineEnd);
+                        if (!line){
+                            continue;
+                        }
+
+                        buffer = buffer.slice(lineEnd+1);
+                        const parsed = JSON.parse(line);
+                        if (parsed.contentType === 'openingA'){
+                            cycleOpeningFor += parsed.text;
+                            getCycle();
+                        }
+                        else if (parsed.contentType === 'openingB'){
+                            cycleOpeningAgainst += parsed.text;
+                            getCycle();
+                        }
+                        else if (parsed.contentType === 'rebuttalA'){
+                            cycleRebuttalFor += parsed.text;
+                            getCycle();
+                        }
+                        else if (parsed.contentType === 'rebuttalB'){
+                            cycleRebuttalAgainst += parsed.text;
+                            getCycle();
+                        }
+                        else if (parsed.contentType === 'followupA'){
+                            cycleFollowupFor += parsed.text;
+                            getCycle();
+                        }
+                        else if (parsed.contentType === 'followupB'){
+                            cycleFollowupAgainst += parsed.text;
+                            getCycle();
+                        }
+                        else if (parsed.done){
+                            // Final update when all content is complete
+                            getCycle();
+                        }
+                    }
+                    
+                }
+
+                // const data = await response.json();
     
-                // elements.summary.value = data.summary || "";
-                elements.openingFor.value     = data.aOpeningClipped     || "";
-                elements.openingAgainst.value = data.bOpeningClipped     || "";
-                autosize(elements.openingFor);
-                autosize(elements.openingAgainst);
-                cycleOpeningFor = data.aOpeningClipped || "";
-                cycleOpeningAgainst = data.bOpeningClipped || "";
-                cycleRebuttalFor = data.aRebuttalClipped || "";
-                cycleRebuttalAgainst = data.bRebuttalClipped || "";
-                cycleFollowupFor = data.aFollowupClipped || "";
-                cycleFollowupAgainst = data.bFollowupClipped || "";
-
-                // elements.rebuttalFor.value    = data.aRebuttalClipped    || "";
-                // elements.rebuttalAgainst.value= data.bRebuttalClipped    || "";
-                // elements.followupFor.value    = data.aFollowupClipped    || "";
-                // elements.followupAgainst.value= data.bFollowupClipped    || "";
-                Object.values(elements).forEach(ta => autosize(ta));
+                // elements.openingFor.value     = data.aOpeningClipped     || "";
+                // elements.openingAgainst.value = data.bOpeningClipped     || "";
+                // autosize(elements.openingFor);
+                // autosize(elements.openingAgainst);
+                // cycleOpeningFor = data.aOpeningClipped || "";
+                // cycleOpeningAgainst = data.bOpeningClipped || "";
+                // cycleRebuttalFor = data.aRebuttalClipped || "";
+                // cycleRebuttalAgainst = data.bRebuttalClipped || "";
+                // cycleFollowupFor = data.aFollowupClipped || "";
+                // cycleFollowupAgainst = data.bFollowupClipped || "";
+                // Object.values(elements).forEach(ta => autosize(ta));
                 
-
-                // elements.opening.textContent = `FOR:\n${data.aOpeningClipped}\n\nAGAINST:\n${data.bOpeningClipped}`;
-                // elements.rebuttal.textContent = `FOR:\n${data.aRebuttalClipped}\n\nAGAINST:\n${data.bRebuttalClipped}`;
-                // elements.followup.textContent = `FOR:\n${data.aFollowupClipped}\n\nAGAINST:\n${data.bFollowupClipped}`;
             } catch (err){
                 alert("Error: " + err.message);
             }
@@ -368,12 +490,11 @@
             }
         });
 
-        let cycle = 1;
         nextBtn.addEventListener('click', async() => {
             try{
-                if(!elements.openingFor.value){
-                    return;
-                }
+                // if(!elements.openingFor.value){
+                //     return;
+                // }
                 if (cycle < 3){
                     cycle++;
                     if (cycle == 2){
@@ -407,9 +528,9 @@
         });
         prevBtn.addEventListener('click', async() => {
             try{
-                if(!elements.openingFor.value){
-                    return;
-                }
+                // if(!elements.openingFor.value){
+                //     return;
+                // }
                 if (cycle > 1){
                     cycle--;
                     if (cycle == 1){
