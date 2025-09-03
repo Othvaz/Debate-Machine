@@ -254,7 +254,13 @@ app.post("/api/run/stream", async (req, res) => {
         const summary = req?.body?.summary;
         const modelA = req?.body?.modelA;
         const modelB = req?.body?.modelB;
-        const perspective = req?.body?.perspectives || "Morality";
+        const perspectiveSelected = req?.body?.perspectives || "Morality";
+        const processedPerspective = Array.from(
+        new Set(String(perspectiveSelected).split(',').map(s => s.trim()).filter(Boolean))
+        ).sort((a,b) => a.localeCompare(b));
+        
+        const perspective = processedPerspective.join(', ');
+
     
         if (!summary){
             return res.status(400).json({error: "missing 'summary'!! WHY??!"});
@@ -262,6 +268,49 @@ app.post("/api/run/stream", async (req, res) => {
         if (!modelA || !modelB){
             return res.status(400).json({error: "missing 'modelA or modelB'!! WHY??!"});
         }
+
+        const theQuery = `
+        SELECT
+        o.debateOutputTextOpeningFor  AS "aOpeningClipped",
+        o.debateOutputTextOpeningAgainst AS "bOpeningClipped",
+        o.debateOutputTextRebuttalFor AS "aRebuttalClipped",
+        o.debateOutputTextRebuttalAgainst AS "bRebuttalClipped",
+        o.debateOutputTextFollowupFor AS "aFollowupClipped",
+        o.debateOutputTextFollowupAgainst AS "bFollowupClipped"
+        FROM debateInput d
+        JOIN debateOutput o ON o.debateInputId = d.debateInputId
+        WHERE d.debateInputText = $1
+        AND d.modelA = $2
+        AND d.modelB = $3
+        AND d.perspectives = $4
+        LIMIT 1
+        `;
+        const cached = await pool.query(theQuery, [summary, modelA, modelB, processedPerspective]);
+        if (cached.rows.length){
+            const r = cached.rows[0];
+            if (!res.headersSent){
+                res.setHeader("Connection", "keep-alive");
+                res.setHeader("Content-Type", "application/x-ndjson");
+                res.setHeader("Cache-Control", "no-cache");
+                res.flushHeaders?.();
+            }
+    
+            const send = (contType, text) =>
+                res.write(JSON.stringify({type:"token", contentType: contType, text}) + "\n");
+            send("openingA",  r.aOpeningClipped);
+            send("openingB",  r.bOpeningClipped);
+            send("rebuttalA", r.aRebuttalClipped);
+            send("rebuttalB", r.bRebuttalClipped);
+            send("followupA", r.aFollowupClipped);
+            send("followupB", r.bFollowupClipped);
+
+            res.write(JSON.stringify({done:true}) + "\n");
+            res.end();
+            return;
+        }
+
+ 
+        
         
         const openingSystemA = `You argue FOR the central claim. Your opposition will argue AGAINST the central claim. You will use ONLY the SUMMARY facts. Respond through lens of ${perspective}. 220-280 words. No insults.`;
         const openingSystemB = `You argue AGAINST the central claim. Your opposition will argue FOR the central claim. You will use ONLY the SUMMARY facts. Respond through lens of ${perspective}. 220-280 words. No insults.`;
@@ -280,10 +329,7 @@ app.post("/api/run/stream", async (req, res) => {
         const outputFollowupA = await chatStream(modelA, followupSystemA, `SUMMARY:\n${summary}\n\nYOUR OPENING STATEMENT (FOR):\n${outputOpeningA}\n\nOPPOSITION'S OPENING (AGAINST):\n${outputOpeningB}\n\nOPPOSITION'S REBUTTAL TO YOUR OPENING:\n${outputRebuttalB}\n\nWrite your followup regarding all this.`, "followupA", res);
         const outputFollowupB = await chatStream(modelB, followupSystemB, `SUMMARY:\n${summary}\n\nYOUR OPENING STATEMENT (AGAINST):\n${outputOpeningB}\n\nOPPOSITION'S OPENING (FOR):\n${outputOpeningA}\n\nOPPOSITION'S REBUTTAL TO YOUR OPENING:\n${outputRebuttalA}\n\nWrite your followup regarding all this.`, "followupB", res);
 
-        const perspectiveSelected = req?.body?.perspectives || "Morality";
-        const processedPerspective = Array.from(
-        new Set(String(perspectiveSelected).split(',').map(s => s.trim()).filter(Boolean))
-        ).sort((a,b) => a.localeCompare(b));
+        
 
         let client;
         try {
@@ -326,6 +372,7 @@ app.post("/api/run/stream", async (req, res) => {
 
         } catch (dbErr) {
         if (client) await client.query('ROLLBACK').catch(() => {});
+        console.log("here, here.")
         res.write(JSON.stringify({ type: "warn", text: `db error: ${dbErr.message}` }) + "\n");
         } finally {
             if (client) client.release();
@@ -347,10 +394,12 @@ app.post("/api/run/stream", async (req, res) => {
     }
     catch(err){
         if (res.headersSent){
+            console.log("here, here(2)")
             res.write(JSON.stringify({ error: String(err) }) + "\n");
             res.end();
         }
         else {
+            console.log(`here, here(4) ERROR IS ${err.message}`);
             res.status(500).json({ error: String(err) });
         }
     }
@@ -546,4 +595,3 @@ app.post("/api/run", async (req,res) => {
 app.listen(3000, () => {
     console.log("Server listening on http://localhost:3000.. or something?");   
 });
-
