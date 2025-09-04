@@ -2,6 +2,8 @@ import express, { json } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import pkg from "pg";
+import OpenAI from "openai";
+
 const { Pool } = pkg;
 
 dotenv.config({ override: true });
@@ -57,6 +59,64 @@ async function chat(model, systemText, userText, temperature = 0.2, jsonMode = f
 
 
 //let's figure this out together.
+function buildDaBody(model, messages, stream, webEnabled){
+    const body = { model, messages, stream }
+    if (webEnabled){
+        const plugin = { id: "web" };
+        const searchPrompt = "Summarize the content of the web result given to you.";
+        const maxResults = 1;
+        plugin.search_prompt = searchPrompt;
+        plugin.max_results = maxResults;
+        body.plugins = [plugin];
+    }
+    return body;
+}
+
+async function chatStreamWithOpenAI(systemText, userText, contentType, res) {
+    if (!res.headersSent){
+        res.setHeader("Content-Type", "application/x-ndjson");
+        res.setHeader("Connection", "keep-alive");
+        res.setHeader("Cache-Control", "no-cache");
+        res.flushHeaders?.();
+    }
+    try {
+        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+        const messages = [];
+        if (systemText) {
+            messages.push({ role: "system", content: systemText });
+        }
+        messages.push({ role: "user", content: userText });
+
+        const stream = await openai.chat.completions.create({
+            model: "gpt-4o",
+            messages: messages,
+            stream: true,
+        });
+
+        let fullText = "";
+        for await (const chunk of stream) {
+            const content = chunk.choices[0]?.delta?.content || "";
+            if (content) {
+                fullText += content;
+                res.write(JSON.stringify({ contentType, text: content }) + "\n");
+            }
+        }
+        res.write(JSON.stringify({ contentType, done: true }) + "\n");
+        return fullText.trim();
+
+    } catch (err) {
+        console.error("OpenAI API Error:", err.message);
+        const errorPayload = { type: "error", text: `OpenAI API error: ${err.message}`};
+        
+        if (!res.headersSent) {
+            res.status(500).json(errorPayload);
+        } else {
+            res.write(JSON.stringify(errorPayload) + "\n");
+            res.end();
+        }
+        return null;
+    }
+}
 
 //we're trying to receive from openrouter, specify that we want it to be stream data, not normal
 async function chatStream(model, systemText, userText, contentType, res){
@@ -74,8 +134,8 @@ async function chatStream(model, systemText, userText, contentType, res){
         messages.push({role: "system", content: systemText});
     }
     messages.push({role: "user", content:userText});
-
-
+    
+    const body = buildDaBody(model, messages, true);
 
     //okay, we've set what we want our respose to the server will look like. now to call from openrouter
     const response = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
@@ -86,11 +146,12 @@ async function chatStream(model, systemText, userText, contentType, res){
             "HTTP-Referer": 'http://localhost',
             "X-Title": 'NewsDebateWeb,'
         },
-        body: JSON.stringify({
-            model: model,
-            messages: messages,
-            stream: true
-        })
+        // body: JSON.stringify({
+        //     model: model,
+        //     messages: messages,
+        //     stream: true
+        // }),
+        body: JSON.stringify(body),
     });
 
     if (!response.ok){
@@ -157,15 +218,8 @@ async function chatStream(model, systemText, userText, contentType, res){
                     }) + "\n");
                 }
             }
-
-            // supposedly after this part, we've completed reading and sending the data strea onto the chat stream. now we need to make sure when we call this in app.post, we reference the res. 
-
-
-
         }
     }
-    //we have our response. 
-
 }
 
 
@@ -200,12 +254,22 @@ async function summarizeText(text){
 //     return raw;
 // }
 app.post("/api/summarize/stream", async (req, res) => {
-    const MODEL = process.env.SUMMARY_MODEL;
+    const online = Boolean(req?.body?.online);
+    const MODEL = online?`${process.env.SUMMARY_MODEL}:online` : process.env.SUMMARY_MODEL;
     const SYS =  "Summarize the article in 8-12 bullet points. Be neutral, factual. Include concrete dates, numbers, names. No opinion of your own. Only respond with the summary and nothing more. Do not include any openings such as 'Here is a summary of...'. Get straight to the point.";
     const USTXT = req?.body?.text;
     const contentType = "summary";
     try{
-        const summarizeStream = await chatStream(MODEL, SYS, USTXT, contentType, res);
+        let summarizeStream;
+        if(online){
+            console.log("We're gonna use OpenAI!");
+            summarizeStream = await chatStreamWithOpenAI(SYS, USTXT, contentType, res);
+
+        }
+        else{
+            console.log("We're gonna use OpenRouter!");
+            summarizeStream = await chatStream(MODEL, SYS, USTXT, contentType, res);
+        }
         let client;
         try{
             client = await pool.connect();

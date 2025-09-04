@@ -128,6 +128,7 @@
         const prevBtn = document.getElementById('prevBtn');
         const summarizeBtn = document.getElementById('summarizeBtn');
         const modelToggle = document.getElementById('modelToggle');
+        const toggleSwitch = document.getElementById('toggleSwitch');
         const perspectiveToggle = document.getElementById('perspectiveToggle');
         const sumArea = document.getElementById('summarizeArea');
 
@@ -227,6 +228,16 @@
             });
         }
 
+        function getLinkSwitchValue(selectEl){
+            let value = selectEl.value();
+            if (toggleSwitch.checked){
+                if(!value.endsWith(":online")){
+                    value += ":online";
+                }
+            }
+            return value;
+        }
+
         let persOpen = false;
         perspective.addEventListener('focus', () => {
             if (!persOpen){
@@ -284,6 +295,7 @@
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
                         text,
+                        online: Boolean(toggleSwitch && toggleSwitch.checked)
                     })
                 });
 
