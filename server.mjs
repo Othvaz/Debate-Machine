@@ -81,28 +81,33 @@ async function chatStreamWithOpenAI(systemText, userText, contentType, res) {
     }
     try {
         const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-        const messages = [];
-        if (systemText) {
-            messages.push({ role: "system", content: systemText });
-        }
-        messages.push({ role: "user", content: userText });
 
-        const stream = await openai.chat.completions.create({
-            model: "gpt-4o",
-            messages: messages,
+        const stream = await openai.responses.create({
+            model: "gpt-4.1-mini",
+            instructions: systemText,
+            tools: [
+                { type: "web_search" },
+            ],
+            input: `${systemText} Here is the article link: ${userText}`,
             stream: true,
         });
 
         let fullText = "";
         for await (const chunk of stream) {
-            const content = chunk.choices[0]?.delta?.content || "";
-            if (content) {
-                fullText += content;
-                res.write(JSON.stringify({ contentType, text: content }) + "\n");
+            if (chunk.type === "response.output_text.delta"){
+                let filtered = chunk.delta;
+                filtered = filtered.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, "$1");
+                filtered = filtered.replace(/https?:\/\/\S+/g, "");
+                filtered = filtered.replace(/\b(?:www\.)?[A-Za-z0-9\-_]+\.[A-Za-z]{2,}(?:\/\S*)?\b/g, "");
+                filtered = filtered.replace(/^\s*Sources?:.*$/gim, "");
+                filtered = filtered.replace(/\s*[\(\[]\s*[\)\]]\s*/g, "");
+                filtered = filtered.replace(/(\S)-/g, "$1\n-");
+                fullText += filtered;
+                res.write(JSON.stringify({ contentType, text: filtered }) + "\n");
             }
         }
         res.write(JSON.stringify({ contentType, done: true }) + "\n");
-        return fullText.trim();
+        return fullText;
 
     } catch (err) {
         console.error("OpenAI API Error:", err.message);
@@ -256,13 +261,14 @@ async function summarizeText(text){
 app.post("/api/summarize/stream", async (req, res) => {
     const online = Boolean(req?.body?.online);
     const MODEL = online?`${process.env.SUMMARY_MODEL}:online` : process.env.SUMMARY_MODEL;
-    const SYS =  "Summarize the article in 8-12 bullet points. Be neutral, factual. Include concrete dates, numbers, names. No opinion of your own. Only respond with the summary and nothing more. Do not include any openings such as 'Here is a summary of...'. Get straight to the point.";
+    let SYS =  "Summarize the article in 8-12 bullet points. Be neutral, factual. Include concrete dates, numbers, names. No opinion of your own. Only respond with the summary and nothing more. Do not include any openings such as 'Here is a summary of...'. Get straight to the point.";
     const USTXT = req?.body?.text;
     const contentType = "summary";
     try{
         let summarizeStream;
         if(online){
             console.log("We're gonna use OpenAI!");
+            SYS += "In your response, DO NOT provide links at the end of each point. Format should be: - [Article Summary] [Newline] - [Article Sumamry]].";
             summarizeStream = await chatStreamWithOpenAI(SYS, USTXT, contentType, res);
 
         }

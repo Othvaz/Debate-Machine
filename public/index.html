@@ -57,7 +57,7 @@
             <label class="inline-flex items-center cursor-pointer">
               <input type="checkbox" class="sr-only peer fixed" id="toggleSwitch">
               <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-              <span class="ms-3 text-sm font-medium mr-3 text-gray-900">Link</span>
+              <span class="ms-3 text-sm font-medium mr-3 text-gray-900">Web Search</span>
             </label>
           </div>
         </div>
@@ -65,7 +65,7 @@
             <div class="relative">
                 <div class="absolute w-[48vw] h-[4vh] items-center text-center z-20 pointer-events-none bg-white px-2 text-hi left-1/2 transform top-[1px] -translate-x-1/2 text-transparent">aaa</div>
                 <label for="summarizeArea" class="absolute pl-[1.3vw] top-[1.5vh] pointer-events-none text-gray-500 z-30">Input Summarizer</label>
-                <textarea name="summarizeArea" id="summarizeArea" class="autosize w-[50vw] lg:pr-[12rem] sm:pr-[10rem] pr-[10rem] h-[20vh] pl-[1.3vw] pb-[10vh] pt-10 box-border z-10 border rounded-[20px] focus:outline-none" placeholder="Provide your materials to be summarized."></textarea>
+                <textarea name="summarizeArea" id="summarizeArea" class="autosize w-[50vw] lg:pr-[12rem] sm:pr-[10rem] pr-[10rem] h-[20vh] pl-[1.3vw] pb-[10vh] pt-10 box-border z-10 border rounded-[20px] focus:outline-none" placeholder="Provide your materials to be summarized.&#10;(Note: Web Search summaries may search for articles related to inserted material.)"></textarea>
                 <button type="button" id="summarizeBtn" class="absolute right-[2vw] bottom-[2vh] px-4 py-2 min-w-[6rem] border rounded-[20px] border-green-300 bg-green-400 hover:bg-green-500 text-white text-[13px]]">
                     <span class="hidden sm:inline">Summarize Input</span>
                     <span class="sm:hidden">▶</span>
@@ -330,7 +330,7 @@
                         buffer = buffer.slice(lineEnd+1);
 
                         const parsed = JSON.parse(line);
-                        if (parsed.contentType === 'summary'){
+                        if (parsed.contentType === 'summary' && parsed.text){
                             output += parsed.text;                      // if (parsed.type === "dodo"){
                             elements.input.value = output;
                             autosize(elements.input);
