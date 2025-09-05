@@ -477,8 +477,8 @@ app.post("/api/run/stream", async (req, res) => {
 
 async function modelOpenings(summary, MODEL_A, MODEL_B, perspective){
     
-    const sysA = `You argue FOR the central claim. Your opposition will argue AGAINST the central claim. You will use ONLY the SUMMARY facts. Respond through lens of ${perspective}. 220-280 words. No insults.`;
-    const sysB = `You argue AGAINST the central claim. Your opposition will argue FOR the central claim. You will use ONLY the SUMMARY facts. Respond through lens of ${perspective}. 220-280 words. No insults.`;
+    const sysA = `You argue FOR the central claim. Your opposition will argue AGAINST the central claim. You will use ONLY the SUMMARY facts. Respond through lens of ${perspective}. 220-280 words. No insults. Respond with the same language as the summary.`;
+    const sysB = `You argue AGAINST the central claim. Your opposition will argue FOR the central claim. You will use ONLY the SUMMARY facts. Respond through lens of ${perspective}. 220-280 words. No insults. Respond with the same language as the summary.`;
 
     const rawA = await chat(MODEL_A,sysA,`SUMMARY:\n${summary}\n\nWrite your opening.`,0.4);
     const rawB = await chat(MODEL_B,sysB,`SUMMARY:\n${summary}\n\nWrite your opening.`,0.4);
@@ -488,8 +488,8 @@ async function modelOpenings(summary, MODEL_A, MODEL_B, perspective){
 
 async function modelRebuttals(summary,oppositionA, oppositionB, MODEL_A, MODEL_B, perspective){
     
-    const sysA = `You argue FOR the central claim. Respond directly to the opponent's opening using only the SUMMARY and facts. Respond through lens of ${perspective}. 160-220 words. No insults. All in one line.`;
-    const sysB = `You argue AGAINST the central claim. Respond directly to the opponent's opening using only the SUMMARY and facts. Respond through lens of ${perspective}. 160-220 words. No insults. All in one line.`;
+    const sysA = `You argue FOR the central claim. Respond directly to the opponent's opening using only the SUMMARY and facts. Respond through lens of ${perspective}. 160-220 words. No insults. All in one line. Respond with the same language as the summary.`;
+    const sysB = `You argue AGAINST the central claim. Respond directly to the opponent's opening using only the SUMMARY and facts. Respond through lens of ${perspective}. 160-220 words. No insults. All in one line. Respond with the same language as the summary.`;
 
     const rawA = await chat(MODEL_A,sysA,`SUMMARY:\n${summary}\n\nOPPOSITION'S OPENING (AGAINST):\n${oppositionB}\n\nWrite your rebuttal.`);
     const rawB = await chat(MODEL_B,sysB,`SUMMARY:\n${summary}\n\nOPPOSITION'S OPENING (FOR):\n${oppositionA}\n\nWrite your rebuttal.`);
@@ -499,8 +499,8 @@ async function modelRebuttals(summary,oppositionA, oppositionB, MODEL_A, MODEL_B
 
 async function modelFollowup(summary,oppositionOpeningA,oppositionRebuttalA,oppositionOpeningB,oppositionRebuttalB, MODEL_A, MODEL_B, perspective){
     
-    const sysA = `You argue FOR the central claim. Respond directly to the opponent's opening and their rebuttal using only the SUMMARY and facts. Respond through lens of ${perspective}. 160-220 words. No insults. All in one line.`;
-    const sysB = `You argue AGAINST the central claim. Respond directly to the opponent's opening and their rebuttal using only the SUMMARY and facts. Respond through lens of ${perspective}. 160-220 words. No insults. All in one line.`;
+    const sysA = `You argue FOR the central claim. Respond directly to the opponent's opening and their rebuttal using only the SUMMARY and facts. Respond through lens of ${perspective}. 160-220 words. No insults. All in one line. Respond with the same language as the summary.`;
+    const sysB = `You argue AGAINST the central claim. Respond directly to the opponent's opening and their rebuttal using only the SUMMARY and facts. Respond through lens of ${perspective}. 160-220 words. No insults. All in one line. Respond with the same language as the summary.`;
 
     const rawA = await chat(MODEL_A,sysA,`SUMMARY:\n${summary}\n\nYOUR OPENING STATEMENT (FOR):\n${oppositionOpeningA}\n\nOPPOSITION'S OPENING (AGAINST):\n${oppositionOpeningB}\n\nOPPOSITION'S REBUTTAL TO YOUR OPENING:\n${oppositionRebuttalB}\n\nWrite your followup regarding all this.`);
     const rawB = await chat(MODEL_B,sysB,`SUMMARY:\n${summary}\n\nYOUR OPENING STATEMENT (AGAINST):\n${oppositionOpeningB}\n\nOPPOSITION'S OPENING (FOR):\n${oppositionOpeningA}\n\nOPPOSITION'S REBUTTAL TO YOUR OPENING:\n${oppositionRebuttalA}\n\nWrite your followup regarding all this.`);
