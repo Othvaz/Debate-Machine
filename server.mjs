@@ -377,12 +377,19 @@ app.post("/api/run/stream", async (req, res) => {
         const summary = req?.body?.summary;
         const modelA = req?.body?.modelA;
         const modelB = req?.body?.modelB;
+
+        // canonical stuff and uhhh stuff
+        const normalizeModel = (m) => String(m || '').replace(/:online$/, '').trim();
+        const modelANorm = normalizeModel(modelA);
+        const modelBNorm = normalizeModel(modelB);
+
+
         const perspectiveSelected = req?.body?.perspectives || "Morality";
         const processedPerspective = Array.from(
         new Set(String(perspectiveSelected).split(',').map(s => s.trim()).filter(Boolean))
         ).sort((a,b) => a.localeCompare(b));
         
-        const perspective = processedPerspective.join(', ');
+        const perspectiveKey = processedPerspective.join(','); // canonical string
 
     
         if (!summary){
@@ -408,7 +415,7 @@ app.post("/api/run/stream", async (req, res) => {
         AND d.perspectives = $4
         LIMIT 1
         `;
-        const cached = await pool.query(theQuery, [summary, modelA, modelB, processedPerspective]);
+        const cached = await pool.query(theQuery, [summary, modelANorm, modelBNorm, processedPerspective]);        
         if (cached.rows.length){
             const r = cached.rows[0];
             if (!res.headersSent){
@@ -429,20 +436,21 @@ app.post("/api/run/stream", async (req, res) => {
 
             res.write(JSON.stringify({done:true}) + "\n");
             res.end();
+            alert("Similar Debate Found!");
             return;
         }
 
  
         
         
-        const openingSystemA = `You argue FOR the central claim. Your opposition will argue AGAINST the central claim. You will use ONLY the SUMMARY facts. Respond through lens of ${perspective}. 220-280 words. No insults.`;
-        const openingSystemB = `You argue AGAINST the central claim. Your opposition will argue FOR the central claim. You will use ONLY the SUMMARY facts. Respond through lens of ${perspective}. 220-280 words. No insults.`;
+        const openingSystemA = `You argue FOR the central claim. Your opposition will argue AGAINST the central claim. You will use ONLY the SUMMARY facts. Respond through lens of ${perspectiveKey}. 220-280 words. No insults.`;
+        const openingSystemB = `You argue AGAINST the central claim. Your opposition will argue FOR the central claim. You will use ONLY the SUMMARY facts. Respond through lens of ${perspectiveKey}. 220-280 words. No insults.`;
     
-        const rebuttalSystemA = `You argue FOR the central claim. Respond directly to the opponent's opening using only the SUMMARY and facts. Respond through lens of ${perspective}. 160-220 words. No insults. All in one line.`;
-        const rebuttalSystemB = `You argue AGAINST the central claim. Respond directly to the opponent's opening using only the SUMMARY and facts. Respond through lens of ${perspective}. 160-220 words. No insults. All in one line.`;
+        const rebuttalSystemA = `You argue FOR the central claim. Respond directly to the opponent's opening using only the SUMMARY and facts. Respond through lens of ${perspectiveKey}. 160-220 words. No insults. All in one line.`;
+        const rebuttalSystemB = `You argue AGAINST the central claim. Respond directly to the opponent's opening using only the SUMMARY and facts. Respond through lens of ${perspectiveKey}. 160-220 words. No insults. All in one line.`;
     
-        const followupSystemA = `You argue FOR the central claim. Respond directly to the opponent's opening and their rebuttal using only the SUMMARY and facts. Respond through lens of ${perspective}. 160-220 words. No insults. All in one line.`;
-        const followupSystemB = `You argue AGAINST the central claim. Respond directly to the opponent's opening and their rebuttal using only the SUMMARY and facts. Respond through lens of ${perspective}. 160-220 words. No insults. All in one line.`;
+        const followupSystemA = `You argue FOR the central claim. Respond directly to the opponent's opening and their rebuttal using only the SUMMARY and facts. Respond through lens of ${perspectiveKey}. 160-220 words. No insults. All in one line.`;
+        const followupSystemB = `You argue AGAINST the central claim. Respond directly to the opponent's opening and their rebuttal using only the SUMMARY and facts. Respond through lens of ${perspectiveKey}. 160-220 words. No insults. All in one line.`;
     
         const outputOpeningA = await chatStream(modelA, openingSystemA,`SUMMARY:\n${summary}\n\nWrite your opening.`,"openingA", res);
     
@@ -463,7 +471,7 @@ app.post("/api/run/stream", async (req, res) => {
             `INSERT INTO debateInput (debateInputText, modelA, modelB, perspectives)
             VALUES ($1, $2, $3, $4)
             RETURNING debateinputid AS id`,
-            [summary, modelA, modelB, processedPerspective]
+            [summary, modelANorm, modelBNorm, processedPerspective]
         );
         const inputId = r1.rows[0].id;
 
