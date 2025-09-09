@@ -451,6 +451,9 @@
                             cycleOpeningFor += parsed.text;
                             getCycle();
                         }
+                        if (parsed.contentType === 'cachedResult'){
+                            alert(parsed.text);
+                        }
                         else if (parsed.contentType === 'openingB'){
                             cycleOpeningAgainst += parsed.text;
                             getCycle();

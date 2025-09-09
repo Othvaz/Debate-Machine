@@ -424,7 +424,13 @@ app.post("/api/run/stream", async (req, res) => {
                 res.setHeader("Cache-Control", "no-cache");
                 res.flushHeaders?.();
             }
-    
+
+            res.write(JSON.stringify({
+                type:"token", 
+                contentType: 'cachedResult', 
+                text: "A similar debate found!"
+            }) + "\n");
+
             const send = (contType, text) =>
                 res.write(JSON.stringify({type:"token", contentType: contType, text}) + "\n");
             send("openingA",  r.aOpeningClipped);
@@ -436,7 +442,6 @@ app.post("/api/run/stream", async (req, res) => {
 
             res.write(JSON.stringify({done:true}) + "\n");
             res.end();
-            alert("Similar Debate Found!");
             return;
         }
 
