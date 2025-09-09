@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Stored Debates</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="flex flex-col gap-4 bg-slate-100 text-slate-800 font-sans p-4 sm:p-8">
+    <div id="nav-placeholder"></div>
+    <script>
+    (async ()=>{
+        const r = await fetch('/navbar.html');
+        if (r.ok) document.getElementById('nav-placeholder').innerHTML = await r.text();
+    })();
+    </script>
+
+    <main class="ml-64">
+        <div id="summary" class=" flex flex-col gap-4">
+            <div class="grid grid-cols-1 gap-4 place-items-center">
+                <article class="border border-gray-300 w-1/2 p-5 gap-5 lg:w-[75%] sm:w-[90%] flex flex-col text-center">
+                    <div class="text-center border p-2">
+                        <label for="summary" class="font-medium" id="summaryIndexText">Summary Index No. 1</label>
+                    </div>
+                    <div id="summaryInput" class="border">
+                        <label for="summaryInput" class="block text-start m-3 text-sm font-medium">Summary Input</label>
+                        <div><hr class="border border-gray-300"></div>
+                        <span class="block m-3 text-start" id="summaryInputText">Alice</span>
+                    </div>
+                    <div id="summaryOutput" class="border">
+                        <label for="summaryOutput" class="block text-start m-3 text-sm font-medium">Summary Output</label>
+                        <div><hr class="border border-gray-300"></div>
+                        <span class="block m-3 text-start" id="summaryOutputText">Alice</span>
+                    </div>
+                </article>
+            </div>
+        </div>
+    </main>
+    
+
+
+    <script>
+        (async () => {
+          try {
+            if (document.readyState === 'loading') {
+              await new Promise(res => document.addEventListener('DOMContentLoaded', res, { once: true }));
+            }
+        
+            const resp = await fetch('/api/getsummaries');
+            if (!resp.ok) throw new Error('Network response ' + resp.status);
+            const summaries = await resp.json();
+            if (!Array.isArray(summaries) || summaries.length === 0) {
+              alert('No summaries found');
+              return;
+            }
+        
+            const setText = (id, txt) => { 
+                const el = document.getElementById(id); 
+                if (el) el.textContent = txt || ''; };
+        
+            let idx = 0;
+            const render = () => {
+              const s = summaries[idx];
+              setText('summaryIndexText', `Summary Index No. ${s.summaryinputid}`);
+              setText('summaryInputText', s.summaryinputtext || '');
+              setText('summaryOutputText', s.summaryoutputtext || '');
+            };
+        
+            render();
+        
+            document.addEventListener('keydown', (e) => {
+              if (e.key === 'ArrowLeft') {
+                if (idx > 0) {
+                  idx = idx - 1;
+                } else {
+                  idx = summaries.length - 1;
+                }
+                render();
+              } else if (e.key === 'ArrowRight') {
+                if (idx < summaries.length - 1) {
+                  idx = idx + 1;
+                } else {
+                  idx = 0;
+                }
+                render();
+              }
+            });
+        
+          } catch (err) {
+            alert('Error loading summaries: ' + (err.message));
+          }
+        })();
+        </script>
+        
+        
+</body>
+</html>

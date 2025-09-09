@@ -258,6 +258,59 @@ async function summarizeText(text){
 //     const raw = await chat(MODEL,SYS,text,0.2,false,2000);
 //     return raw;
 // }
+
+app.get("/api/getsummaries", async(req, res)=>{
+    const client = await pool.connect();
+    try{
+        const theQuery = `SELECT
+        o.summaryoutputtext,
+        i.summaryinputtext,
+        i.summaryinputid
+        FROM summaryoutput o
+        JOIN summaryinput i ON i.summaryinputid = o.summaryinputid
+        ORDER BY o.summaryoutputid ASC
+        `
+        const result = await client.query(theQuery);
+        res.json(result.rows);
+    }
+    catch(err){
+        console.log(err.message);
+    }
+    finally{
+        client?.release();
+    }
+})
+
+app.get("/api/getdebates", async (req, res) =>{
+    const client = await pool.connect();
+    try{
+        const theQuery = `SELECT 
+        o.debateoutputtextopeningfor,
+        o.debateoutputtextopeningagainst,
+        o.debateoutputtextrebuttalfor,
+        o.debateoutputtextrebuttalagainst,
+        o.debateoutputtextfollowupfor,
+        o.debateoutputtextfollowupagainst,
+        d.debateinputtext,
+        d.modela,
+        d.modelb,
+        d.perspectives,
+        d.debateinputid
+        FROM debateoutput o
+        JOIN debateinput d ON d.debateinputid = o.debateinputid
+        ORDER BY o.debateoutputid ASC`;
+
+        const result = await client.query(theQuery);
+        res.json(result.rows);
+    
+    }
+    catch(err){
+        alert(err.message);
+    }
+    finally{
+        client?.release();
+    }
+})
 app.post("/api/summarize/stream", async (req, res) => {
     const online = Boolean(req?.body?.online);
     const MODEL = online?`${process.env.SUMMARY_MODEL}:online` : process.env.SUMMARY_MODEL;
