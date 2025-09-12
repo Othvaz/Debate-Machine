@@ -574,6 +574,16 @@ async function modelFollowup(summary,oppositionOpeningA,oppositionRebuttalA,oppo
     return { aFollowupClipped: cliptoLastSentence(rawA), bFollowupClipped: cliptoLastSentence(rawB)};
 
 }
+const currentVer = String(Date.now());
+app.get("/version", async(req, res) => {
+    try{
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+        res.json({version: currentVer});
+    }
+    catch(err){
+        console.warn(err.message);
+    }
+});
 
 app.post("/api/summarize", async(req,res) =>{
     let userText;

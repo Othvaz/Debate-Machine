@@ -82,8 +82,51 @@
             </article>
         </div>
     </main>
-    
+    <main class="ml-64 antialiased">
+      <div id="modelWrapper" class="fixed hidden inset-0 z-50">
+        <div id="overlay" class="absolute inset-0 bg-black/60 backdrop-blur"></div>
+        <div class="flex fixed inset-0 items-center justify-center">
+          <div class="w-[300px] h-[200px] bg-white rounded-lg flex flex-col items-center justify-center gap-5 p-5">
+            <div>
+              <span>Welcome to the database view. Please use your Left and Right arrow keys to navigate.</span>
+            </div>
+            <div>
+              <button id="closeBtn" class="rounded-lg flex bg-cyan-400 p-[10px] pl-[15px] pr-[15px] text-white hover:text-black hover:rotate-3 transition-all duration-1">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
 
+    <script>
+      const wrapper = document.getElementById('modelWrapper');
+        const closeBtn = document.getElementById('closeBtn');
+
+        function closeWrapper(){
+          if (!wrapper) return;
+          wrapper.classList.add('hidden');
+          sessionStorage.setItem('seenSummaryView', '1');
+        }
+        function showWrapper(){
+          wrapper.classList.remove('hidden');
+        }
+        document.addEventListener('DOMContentLoaded', function (){
+          try{
+            const gaze = sessionStorage.getItem('seenSummaryView');
+            if(gaze === null){
+              showWrapper();
+            }
+            else {
+              closeWrapper();
+            }
+          }
+          catch(err){
+            alert(err.message);
+          }
+        })
+        closeBtn.addEventListener('click', closeWrapper);
+    </script>
 
     <script>
         (async () => {
