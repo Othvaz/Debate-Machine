@@ -45,6 +45,20 @@
         #openingAgainst::-webkit-scrollbar {
             display: none; /* Chrome, Safari and Opera */
         }
+        .select-uniform{
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-color: white;
+            background-image: url(data:image/svg+xml;base64,PHN2ZyBmaWxsPSdibGFjaycgaGVpZ2h0PScyNCcgdmlld0JveD0nMCAwIDI0IDI0JyB3aWR0aD0nMjQnIHhtbG5zPSdodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2Zyc+PHBhdGggZD0nTTcgMTBsNSA1IDUtNXonLz48cGF0aCBkPSdNMCAwaDI0djI0SDB6JyBmaWxsPSdub25lJy8+PC9zdmc+);
+            background-repeat: no-repeat;
+            background-position: right .75rem center;
+            background-size: 1rem;
+            padding-right: 2.25rem;
+        }
+        .select-uniform::-ms-expand { 
+            display: none;
+         }
     </style>
 </head>
 <body class="min-h-screen w-screen flex
@@ -100,11 +114,11 @@
     
                     <div class="flex-1">
                         <label for="modelA" class="block mb-1 font-medium text-sm">Model A [FOR]</label>
-                        <select id="modelA" class="w-full border p-2 text-black"></select>
+                        <select id="modelA" class="select-uniform w-full border p-2 text-black"></select>
                     </div>
                     <div class="flex-1">
                         <label for="modelB" class="block mb-1 font-medium text-sm">Model B [AGAINST]</label>
-                        <select id="modelB" class="w-full border p-2 text-black"></select>
+                        <select id="modelB" class="select-uniform w-full border p-2 text-black"></select>
                     </div>
                 </div>
                 <!-- Summary -->
